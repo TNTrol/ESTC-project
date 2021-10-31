@@ -61,9 +61,9 @@
  * @brief Function for application main entry.
  */
 
- void init_data(const int size, const int id, int *array)
+ void init_data(int *array)
  {
-    int temp = 0, number = id;
+    int temp = 0, number = ID;
     for(int i = SIZE - 1; i >= 0 ; --i)
     {
         temp = number % 10;
@@ -86,7 +86,7 @@
 int main(void)
 {
     int blink_array[SIZE] = {0};
-    init_data(SIZE, ID, blink_array);
+    init_data(blink_array);
     bsp_board_init(BSP_INIT_LEDS);
 
     while (true)

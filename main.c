@@ -60,31 +60,40 @@
 /**
  * @brief Function for application main entry.
  */
-int main(void)
-{
-    int blink_array[SIZE]; //= {6, 5, 7, 9};
-    int temp = 0, number = ID;
-    for(int i = 0; i < SIZE; ++i)
+
+ void init_data(const int size, const int id, int *array)
+ {
+    int temp = 0, number = id;
+    for(int i = SIZE - 1; i >= 0 ; --i)
     {
         temp = number % 10;
         number /= 10;
-        blink_array[i] = temp;
+        array[i] = temp;
     }
+ }
 
+ void make_blink(const int id_led, const int count)
+ {
+    for (int j = 0; j < count; ++j)
+    {
+        bsp_board_led_invert(id_led);
+        nrf_delay_ms(TIME);
+        bsp_board_led_invert(id_led);
+        nrf_delay_ms(TIME);
+    }
+ }
+
+int main(void)
+{
+    int blink_array[SIZE] = {0};
+    init_data(SIZE, ID, blink_array);
     bsp_board_init(BSP_INIT_LEDS);
 
-    /* Toggle LEDs. */
     while (true)
     {
         for(int i = 0; i < SIZE; ++i)
         {
-            for (int j = 0; j < blink_array[i]; ++j)
-            {
-                bsp_board_led_invert(i);
-                nrf_delay_ms(TIME);
-                bsp_board_led_invert(i);
-                nrf_delay_ms(TIME);
-            }
+            make_blink(i, blink_array[i]);
         }
     }
 }

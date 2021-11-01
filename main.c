@@ -53,9 +53,9 @@
 #include "nrf_delay.h"
 #include "boards.h"
 
-#define ID 6579
-#define SIZE 4
-#define TIME 500
+#define DEVICE_ID 6579
+#define DEVICE_SIZE 4
+#define DEVICE_TIME 500
 
 /**
  * @brief Function for application main entry.
@@ -63,8 +63,8 @@
 
  void init_data(int *array)
  {
-    int temp = 0, number = ID;
-    for(int i = SIZE - 1; i >= 0 ; --i)
+    int temp = 0, number = DEVICE_ID;
+    for(int i = DEVICE_SIZE - 1; i >= 0 ; --i)
     {
         temp = number % 10;
         number /= 10;
@@ -77,21 +77,21 @@
     for (int j = 0; j < count; ++j)
     {
         bsp_board_led_invert(id_led);
-        nrf_delay_ms(TIME);
+        nrf_delay_ms(DEVICE_TIME);
         bsp_board_led_invert(id_led);
-        nrf_delay_ms(TIME);
+        nrf_delay_ms(DEVICE_TIME);
     }
  }
 
 int main(void)
 {
-    int blink_array[SIZE] = {0};
+    int blink_array[DEVICE_SIZE] = {0};
     init_data(blink_array);
     bsp_board_init(BSP_INIT_LEDS);
 
     while (true)
     {
-        for(int i = 0; i < SIZE; ++i)
+        for(int i = 0; i < DEVICE_SIZE; ++i)
         {
             make_blink(i, blink_array[i]);
         }

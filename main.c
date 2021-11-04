@@ -17,10 +17,9 @@
 #include "nrf_gpio.h"
 
 #define DEVICE_ID 6579
-#define DEVICE_LEDS {BSP_LED_0, BSP_LED_1, BSP_LED_2, BSP_LED_3}
+#define DEVICE_LEDS {NRF_GPIO_PIN_MAP(0, 6), NRF_GPIO_PIN_MAP(0, 8), NRF_GPIO_PIN_MAP(1, 9), NRF_GPIO_PIN_MAP(0, 12)}
 #define DEVICE_SIZE 4
 #define DEVICE_TIME 500
-#define MY_LED BSP_LED_0
 
 /**
  * @brief Function for application main entry.

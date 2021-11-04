@@ -36,7 +36,7 @@
 
  void init_data(PinBlink *array)
  {
-    uint8_t temp = 0, number = DEVICE_ID;
+    uint32_t temp = 0, number = DEVICE_ID;
     static const uint8_t arr[DEVICE_SIZE] = DEVICE_LEDS;
     for(int i = DEVICE_SIZE - 1; i >= 0 ; --i)
     {

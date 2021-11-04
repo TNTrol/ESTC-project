@@ -37,7 +37,7 @@
  {
     
     int temp = 0, number = DEVICE_ID;
-    static int arr[DEVICE_SIZE] = DEVICE_LEDS;
+    static const int arr[DEVICE_SIZE] = DEVICE_LEDS;
     for(int i = DEVICE_SIZE - 1; i >= 0 ; --i)
     {
         temp = number % 10;
@@ -51,7 +51,6 @@
 
  void make_blink(const int pin, const int count)
  {
-     
     for (int j = 0; j < count; ++j)
     {
         nrf_gpio_pin_write(pin, 0);

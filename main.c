@@ -25,7 +25,15 @@
  * @brief Function for application main entry.
  */
 
- void init_data(int (*array)[2])
+ struct pin_blink_t
+ {
+     uint8_t pin;
+     uint8_t repeat;
+ };
+
+ typedef struct pin_blink_t PinBlink;
+
+ void init_data(PinBlink *array)
  {
     
     int temp = 0, number = DEVICE_ID;
@@ -34,21 +42,21 @@
     {
         temp = number % 10;
         number /= 10;
-        array[i][1] = temp;
-        array[i][0] = arr[i];
+        array[i].repeat = temp;
+        array[i].pin = arr[i];
         nrf_gpio_cfg_output(arr[i]);
         nrf_gpio_pin_write(arr[i], 1);
     }
  }
 
- void make_blink(const int id_led, const int count)
+ void make_blink(const int pin, const int count)
  {
      
     for (int j = 0; j < count; ++j)
     {
-        nrf_gpio_pin_write(id_led, 0);
+        nrf_gpio_pin_write(pin, 0);
         nrf_delay_ms(DEVICE_TIME);
-        nrf_gpio_pin_write(id_led, 1);
+        nrf_gpio_pin_write(pin, 1);
         nrf_delay_ms(DEVICE_TIME);
     }
  }
@@ -56,13 +64,13 @@
 int main(void)
 {
     
-    int blink_array[DEVICE_SIZE][2] = {0};
+    PinBlink blink_array[DEVICE_SIZE] = {0};
     init_data(blink_array);
     while (true)
     {
         for(int i = 0; i < DEVICE_SIZE; ++i)
         {
-            make_blink(blink_array[i][0], blink_array[i][1]);
+            make_blink(blink_array[i].pin, blink_array[i].repeat);
         }
     }
 }

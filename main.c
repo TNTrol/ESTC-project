@@ -65,7 +65,7 @@
     nrf_delay_ms(time);
  }
 
- void init_but(uint8_t button)
+ void init_button(uint8_t button)
  {
      nrf_gpio_cfg_input(button, NRF_GPIO_PIN_PULLUP);
  }
@@ -85,13 +85,13 @@ int main(void)
     
     init_data(DEVICE_SIZE, DEVICE_ID, blink_array);
     init_leds(leds, DEVICE_SIZE);
-    init_but(DEVICE_BUTTON);
+    init_button(DEVICE_BUTTON);
     init_log();
 
     while (true)
     {
         LOG_BACKEND_USB_PROCESS();
-        if(! nrf_gpio_pin_read(DEVICE_BUTTON))
+        if(!nrf_gpio_pin_read(DEVICE_BUTTON))
         {
             if(blink_array[index_led] <= repeat)
             {

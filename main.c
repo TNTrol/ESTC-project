@@ -30,7 +30,8 @@
 #define DEVICE_LED4 NRF_GPIO_PIN_MAP(0, 12)
 #define DEVICE_LEDS {DEVICE_LED1, DEVICE_LED2, DEVICE_LED3, DEVICE_LED4}
 #define DEVICE_COUNT_LED 4
-#define DEVICE_BLINK 500
+#define DEVICE_DELAY 500
+#define DEVICE_DISCRETE_DELAY 1
 #define DEVICE_BUTTON NRF_GPIO_PIN_MAP(1, 6)
 
 /**
@@ -57,14 +58,6 @@
     }
  }
 
- inline void make_blink(const uint8_t pin, const uint32_t time)
- {
-    nrf_gpio_pin_write(pin, 0);
-    nrf_delay_ms(time);
-    nrf_gpio_pin_write(pin, 1);
-    nrf_delay_ms(time);
- }
-
  void init_button(uint8_t button)
  {
      nrf_gpio_cfg_input(button, NRF_GPIO_PIN_PULLUP);
@@ -82,6 +75,8 @@ int main(void)
     uint8_t blink_array[DEVICE_COUNT_LED] = {0};
     const uint8_t leds[DEVICE_COUNT_LED] = DEVICE_LEDS;
     uint8_t index_led = 0, repeat = 0;
+    uint32_t time = 0;
+    uint8_t light = 0;
     
     init_data(DEVICE_COUNT_LED, DEVICE_ID, blink_array);
     init_leds(leds, DEVICE_COUNT_LED);
@@ -93,17 +88,32 @@ int main(void)
         LOG_BACKEND_USB_PROCESS();
         if(!nrf_gpio_pin_read(DEVICE_BUTTON))
         {
-            if(blink_array[index_led] <= repeat)
+            if(time++ < DEVICE_DELAY)  
             {
-                index_led = index_led + 1 < DEVICE_COUNT_LED ? index_led + 1 : 0;
-                repeat = 0;
-            }   
-            make_blink(leds[index_led], DEVICE_BLINK);
-            ++repeat;
-
-            NRF_LOG_INFO("LEDS #%d is blinking\n", index_led);
-            NRF_LOG_PROCESS();
+                if(blink_array[index_led] <= repeat)
+                {
+                    index_led = index_led + 1 < DEVICE_COUNT_LED ? index_led + 1 : 0;
+                    repeat = 0;
+                }   
+                nrf_gpio_pin_write(leds[index_led], light);
+            }
+            else
+            {
+                time = 0;
+                light = ~light;
+                repeat = light ? repeat : repeat + 1;
+                if(!light)
+                {
+                    NRF_LOG_INFO("LEDS #%d is blinking\n", index_led);
+                    NRF_LOG_PROCESS();
+                }
+            }
         }
+        else
+        {
+            nrf_gpio_pin_write(leds[index_led], 1);
+        }
+        nrf_delay_ms(DEVICE_DISCRETE_DELAY);
     }   
 }
 

@@ -29,8 +29,8 @@
 #define DEVICE_LED3 NRF_GPIO_PIN_MAP(1, 9)
 #define DEVICE_LED4 NRF_GPIO_PIN_MAP(0, 12)
 #define DEVICE_LEDS {DEVICE_LED1, DEVICE_LED2, DEVICE_LED3, DEVICE_LED4}
-#define DEVICE_SIZE 4
-#define DEVICE_TIME 500
+#define DEVICE_COUNT_LED 4
+#define DEVICE_BLINK 500
 #define DEVICE_BUTTON NRF_GPIO_PIN_MAP(1, 6)
 
 /**
@@ -57,7 +57,7 @@
     }
  }
 
- void make_blink(const uint8_t pin, const uint32_t time)
+ inline void make_blink(const uint8_t pin, const uint32_t time)
  {
     nrf_gpio_pin_write(pin, 0);
     nrf_delay_ms(time);
@@ -79,12 +79,12 @@
 
 int main(void)
 {
-    uint8_t blink_array[DEVICE_SIZE] = {0};
-    const uint8_t leds[DEVICE_SIZE] = DEVICE_LEDS;
+    uint8_t blink_array[DEVICE_COUNT_LED] = {0};
+    const uint8_t leds[DEVICE_COUNT_LED] = DEVICE_LEDS;
     uint8_t index_led = 0, repeat = 0;
     
-    init_data(DEVICE_SIZE, DEVICE_ID, blink_array);
-    init_leds(leds, DEVICE_SIZE);
+    init_data(DEVICE_COUNT_LED, DEVICE_ID, blink_array);
+    init_leds(leds, DEVICE_COUNT_LED);
     init_button(DEVICE_BUTTON);
     init_log();
 
@@ -95,10 +95,10 @@ int main(void)
         {
             if(blink_array[index_led] <= repeat)
             {
-                index_led = index_led + 1 < DEVICE_SIZE ? index_led + 1 : 0;
+                index_led = index_led + 1 < DEVICE_COUNT_LED ? index_led + 1 : 0;
                 repeat = 0;
             }   
-            make_blink(leds[index_led], DEVICE_TIME);
+            make_blink(leds[index_led], DEVICE_BLINK);
             ++repeat;
 
             NRF_LOG_INFO("LEDS #%d is blinking\n", index_led);

@@ -86,6 +86,7 @@ int main(void)
     while (true)
     {
         LOG_BACKEND_USB_PROCESS();
+        NRF_LOG_PROCESS();
         if(!nrf_gpio_pin_read(DEVICE_BUTTON))
         {
             if(time++ < DEVICE_DELAY)  
@@ -105,7 +106,6 @@ int main(void)
                 if(!light)
                 {
                     NRF_LOG_INFO("LEDS #%d is blinking\n", index_led);
-                    NRF_LOG_PROCESS();
                 }
             }
         }

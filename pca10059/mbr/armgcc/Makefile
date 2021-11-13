@@ -60,6 +60,7 @@ SRC_FILES += \
   $(SDK_ROOT)/external/fprintf/nrf_fprintf_format.c \
   $(SDK_ROOT)/external/utf_converter/utf.c \
   $(PROJ_DIR)/main.c \
+  $(PROJ_DIR)/gpio_module/gpio_module.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \

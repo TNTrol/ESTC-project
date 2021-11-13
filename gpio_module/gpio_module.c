@@ -14,21 +14,25 @@ void init_leds(void)
 
 void write_led(uint8_t index, uint8_t value)
 {
+    ASSERT(index < LEDS_NUMBER);
     nrf_gpio_pin_write(leds[index], value);
 }
 
 void invert_led(uint8_t index)
 {
+    ASSERT(index < LEDS_NUMBER);
     nrf_gpio_pin_toggle(leds[index]);
 }
 
 void on_led(uint8_t index)
 {
+    ASSERT(index < LEDS_NUMBER);
     nrf_gpio_pin_write(leds[index], 0);
 }
 
 void off_led(uint8_t index)
 {
+    ASSERT(index < LEDS_NUMBER);
     nrf_gpio_pin_write(leds[index], 1);
 }
 

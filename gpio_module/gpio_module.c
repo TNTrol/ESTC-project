@@ -1,7 +1,7 @@
 #include "gpio_module.h"
 
-static uint8_t leds[LEDS_NUMBER] = LEDS_LIST;
-static uint8_t buttons[BUTTONS_NUMBER] = BUTTONS_LIST;
+static const uint8_t leds[LEDS_NUMBER] = LEDS_LIST;
+static const uint8_t buttons[BUTTONS_NUMBER] = BUTTONS_LIST;
 
 void init_leds(void)
 {

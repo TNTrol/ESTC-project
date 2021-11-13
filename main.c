@@ -14,21 +14,17 @@
 #include <stdint.h>
 #include "nrf_delay.h"
 #include "nrf_gpio.h"
+#include "gpio_module/gpio_module.h"
 
-#include "pca10059.h"
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
 #define DEVICE_ID 6579
-#define DEVICE_LEDS LEDS_LIST
 #define DEVICE_COUNT_LED 4
 #define DEVICE_DELAY 500
 #define DEVICE_DISCRETE_DELAY 1
-#define DEVICE_BUTTON NRF_GPIO_PIN_MAP(1, 6)
-
-#include "gpio_module/gpio_module.h"
 
 /**
  * @brief Function for application main entry.

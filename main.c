@@ -10,23 +10,13 @@
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
-#define DEVICE_ID 6579
+#define DEVICE_ID_LIST {6, 5, 7, 9}
 #define DEVICE_COUNT_LED 4U
 #define DEVICE_DELAY_CICLE 100U
 #define DEVICE_DISCRETE_DELAY 1U
+#define DEVICE_DELAY_BLINK 500
 #define DEVICE_TIME 10U
 
-
- void init_data(const uint32_t size, uint32_t id, uint8_t *array)
- {
-    uint32_t temp = 0;
-    for(int i = size - 1; i >= 0 ; --i)
-    {
-        temp = id % 10;
-        id /= 10;
-        array[i] = temp;
-    }
- }
 
  void init_log(void)
  {
@@ -45,15 +35,15 @@
 
 int main(void)
 {
-    uint8_t blink_array[DEVICE_COUNT_LED] = {0};
+    
+    uint8_t blink_array[DEVICE_COUNT_LED] = DEVICE_ID_LIST;
     uint8_t index_led = 0, repeat = 0, light = 0;
-    uint32_t time_cicle = 0;
+    uint32_t time_cicle = 0, time_current = 0;
 
     nrfx_systick_init();
-    init_data(DEVICE_COUNT_LED, DEVICE_ID, blink_array);
+    init_log();
     init_leds();
     init_button();
-    init_log();
 
     while (true)
     {
@@ -61,14 +51,20 @@ int main(void)
         NRF_LOG_PROCESS();
         if(!get_value_button())
         {
-            if(time_cicle++ < DEVICE_DELAY_CICLE)  
+            if(DEVICE_DELAY_CICLE > time_cicle)  
             {
+                if(!(++time_current % (DEVICE_DELAY_BLINK / DEVICE_DELAY_CICLE)))
+                {
+                    time_cicle++;
+                }
                 if(blink_array[index_led] <= repeat)
                 {
                     index_led = index_led + 1 < DEVICE_COUNT_LED ? index_led + 1 : 0;
+                    time_current = 0;
+                    time_cicle = 0;
                     repeat = 0;
                 }
-                if(light)   
+                if(light)
                 {
                     make_blink(index_led, DEVICE_DELAY_CICLE - time_cicle, time_cicle);
                 }
@@ -80,6 +76,7 @@ int main(void)
             else
             {
                 time_cicle = 0;
+                time_current = 0;
                 light = ~light;
                 repeat = light ? repeat : repeat + 1;
                 if(!light)
@@ -90,7 +87,7 @@ int main(void)
         }
         else
         {
-            write_led(index_led, 1);
+            off_led(index_led);
         }
         nrf_delay_ms(DEVICE_DISCRETE_DELAY);
     }   

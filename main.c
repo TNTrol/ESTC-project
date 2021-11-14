@@ -17,14 +17,15 @@
 #define DEVICE_DISCRETE_DELAY 1U
 #define DEVICE_DELAY_BLINK 500
 #define DEVICE_TIME 10U
-#define DEVICE_BUTTON_DELAY_MIN 25000
-#define DEVICE_BUTTON_DELAY_MAX 100000
+#define DEVICE_BUTTON_DELAY_MIN 1000
+#define DEVICE_BUTTON_DELAY_MAX 15000
 
 static volatile bool double_click = false;
 static volatile bool freeze = false;
-static nrfx_systick_state_t time_state;
+//static nrfx_systick_state_t time_state;
 
-//static nrfx_rtc_init rtc_timer =  NRFX_RTC_INSTANCE(0);
+static nrfx_rtc_t rtc_timer =  NRFX_RTC_INSTANCE(0);
+static uint32_t prev_time = 0;
 
  void init_log(void)
  {
@@ -45,16 +46,16 @@ void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
     if(!double_click)
     {
-        nrfx_systick_get(&time_state);
+        prev_time = nrfx_rtc_counter_get(&rtc_timer);
         double_click = true;
         return;
     }
-    if(nrfx_systick_test(&time_state, DEVICE_BUTTON_DELAY_MIN) && !nrfx_systick_test(&time_state, DEVICE_BUTTON_DELAY_MAX))
+    uint32_t t = nrfx_rtc_counter_get(&rtc_timer) - prev_time;
+    if(t > DEVICE_BUTTON_DELAY_MIN && t < DEVICE_BUTTON_DELAY_MAX)
     {
         freeze = !freeze;
     }
     double_click = false;
-    
 }
 
  void init_gpiote(void)
@@ -71,26 +72,26 @@ void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
     nrfx_gpiote_in_event_enable(BUTTON_1, true);
  }
 
-// void rtc_handler(nrfx_rtc_int_type_t int_type)
-// {
+void rtc_handler(nrfx_rtc_int_type_t int_type)
+{
 
-// }
+}
 
-//  void init_rtc(void)
-//  {
-//     nrfx_rtc_config_t conf = NRFX_RTC_DEFAULT_CONFIG;
-//     nrfx_rtc_init(&rtc_timer, &conf, rtc_handler);
-//     nrfx_rtc_enable(&rtc_timer);
-//  }
+ void init_rtc(void)
+ {
+    nrfx_rtc_config_t conf = NRFX_RTC_DEFAULT_CONFIG;
+    nrfx_rtc_init(&rtc_timer, &conf, rtc_handler);
+    nrfx_rtc_enable(&rtc_timer);
+ }
 
 int main(void)
 {
-    
     uint8_t blink_array[DEVICE_COUNT_LED] = DEVICE_ID_LIST;
     uint8_t index_led = 0, repeat = 0, light = 0;
     uint32_t time_cicle = 0, time_current = 0;
 
     nrfx_systick_init();
+    init_rtc();
     init_log();
     init_leds();
     init_button();

@@ -1,20 +1,9 @@
-
-/** @file
- *
- * @defgroup blinky_example_main main.c
- * @{
- * @ingroup blinky_example
- * @brief Blinky Example Application main file.
- *
- * This file contains the source code for a sample application to blink LEDs.
- *
- */
-
 #include <stdbool.h>
 #include <stdint.h>
+#include "nrf_drv_systick.h"
 #include "nrf_delay.h"
-#include "nrf_gpio.h"
 #include "gpio_module/gpio_module.h"
+
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -22,13 +11,11 @@
 #include "nrf_log_backend_usb.h"
 
 #define DEVICE_ID 6579
-#define DEVICE_COUNT_LED 4
-#define DEVICE_DELAY 500
-#define DEVICE_DISCRETE_DELAY 1
+#define DEVICE_COUNT_LED 4U
+#define DEVICE_DELAY_CICLE 100U
+#define DEVICE_DISCRETE_DELAY 1U
+#define DEVICE_TIME 10U
 
-/**
- * @brief Function for application main entry.
- */
 
  void init_data(const uint32_t size, uint32_t id, uint8_t *array)
  {
@@ -48,13 +35,21 @@
     NRF_LOG_DEFAULT_BACKENDS_INIT();
  }
 
+ void make_blink(uint8_t index_led, uint32_t time1, uint32_t time2)
+ {
+    invert_led(index_led);
+    nrfx_systick_delay_us(DEVICE_TIME * (time1));
+    invert_led(index_led);
+    nrfx_systick_delay_us(DEVICE_TIME * time2);
+ }
+
 int main(void)
 {
     uint8_t blink_array[DEVICE_COUNT_LED] = {0};
-    uint8_t index_led = 0, repeat = 0;
-    uint32_t time = 0;
-    uint8_t light = 0;
-    
+    uint8_t index_led = 0, repeat = 0, light = 0;
+    uint32_t time_cicle = 0;
+
+    nrfx_systick_init();
     init_data(DEVICE_COUNT_LED, DEVICE_ID, blink_array);
     init_leds();
     init_button();
@@ -66,18 +61,25 @@ int main(void)
         NRF_LOG_PROCESS();
         if(!get_value_button())
         {
-            if(time++ < DEVICE_DELAY)  
+            if(time_cicle++ < DEVICE_DELAY_CICLE)  
             {
                 if(blink_array[index_led] <= repeat)
                 {
                     index_led = index_led + 1 < DEVICE_COUNT_LED ? index_led + 1 : 0;
                     repeat = 0;
-                }   
-                write_led(index_led,  light);
+                }
+                if(light)   
+                {
+                    make_blink(index_led, DEVICE_DELAY_CICLE - time_cicle, time_cicle);
+                }
+                else
+                {    
+                    make_blink(index_led, time_cicle, DEVICE_DELAY_CICLE - time_cicle);    
+                }
             }
             else
             {
-                time = 0;
+                time_cicle = 0;
                 light = ~light;
                 repeat = light ? repeat : repeat + 1;
                 if(!light)
@@ -93,7 +95,3 @@ int main(void)
         nrf_delay_ms(DEVICE_DISCRETE_DELAY);
     }   
 }
-
-/**
- *@}
- **/

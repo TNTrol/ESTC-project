@@ -20,6 +20,7 @@
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
+<<<<<<< HEAD
 //#include "app_usbd.h"
 //#include "app_usbd_serial_num.h"
 
@@ -36,6 +37,23 @@
 /**
  * @brief Function for application main entry.
  */
+=======
+#define DEVICE_ID_LIST {6, 5, 7, 9}
+#define DEVICE_COUNT_LED 4U
+#define DEVICE_DELAY_CICLE 100U
+#define DEVICE_DISCRETE_DELAY 1U
+#define DEVICE_DELAY_BLINK 500
+#define DEVICE_TIME 10U
+#define DEVICE_BUTTON_DELAY_MIN 1000
+#define DEVICE_BUTTON_DELAY_MAX 15000
+
+static volatile bool double_click = false;
+static volatile bool freeze = false;
+//static nrfx_systick_state_t time_state;
+
+static nrfx_rtc_t rtc_timer =  NRFX_RTC_INSTANCE(0);
+static uint32_t prev_time = 0;
+>>>>>>> 0d52744 (add doble click with rtc)
 
  void init_data(const uint32_t size, uint32_t id, uint8_t *array)
  {
@@ -50,12 +68,36 @@
 
  void init_leds(const uint8_t *leds, const uint32_t size)
  {
+<<<<<<< HEAD
     for(int i = 0; i < size; ++i)
+=======
+    invert_led(index_led);
+    nrfx_systick_delay_us(DEVICE_TIME * (time1));
+    invert_led(index_led);
+    nrfx_systick_delay_us(DEVICE_TIME * time2);
+ }
+ 
+void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
+{
+    if(!double_click)
+    {
+        prev_time = nrfx_rtc_counter_get(&rtc_timer);
+        double_click = true;
+        return;
+    }
+    uint32_t t = nrfx_rtc_counter_get(&rtc_timer) - prev_time;
+    if(t > DEVICE_BUTTON_DELAY_MIN && t < DEVICE_BUTTON_DELAY_MAX)
+>>>>>>> 0d52744 (add doble click with rtc)
     {
         nrf_gpio_cfg_output(leds[i]);
         nrf_gpio_pin_write(leds[i], 1);
     }
+<<<<<<< HEAD
  }
+=======
+    double_click = false;
+}
+>>>>>>> 0d52744 (add doble click with rtc)
 
  inline void make_blink(const uint8_t pin, const uint32_t time)
  {
@@ -65,6 +107,7 @@
     nrf_delay_ms(time);
  }
 
+<<<<<<< HEAD
  void init_button(uint8_t button)
  {
      nrf_gpio_cfg_input(button, NRF_GPIO_PIN_PULLUP);
@@ -75,10 +118,23 @@
     APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
     NRF_LOG_INFO("Starting up the test project with USB logging");
     NRF_LOG_DEFAULT_BACKENDS_INIT();
+=======
+void rtc_handler(nrfx_rtc_int_type_t int_type)
+{
+
+}
+
+ void init_rtc(void)
+ {
+    nrfx_rtc_config_t conf = NRFX_RTC_DEFAULT_CONFIG;
+    nrfx_rtc_init(&rtc_timer, &conf, rtc_handler);
+    nrfx_rtc_enable(&rtc_timer);
+>>>>>>> 0d52744 (add doble click with rtc)
  }
 
 int main(void)
 {
+<<<<<<< HEAD
     uint8_t blink_array[DEVICE_COUNT_LED] = {0};
     const uint8_t leds[DEVICE_COUNT_LED] = DEVICE_LEDS;
     uint8_t index_led = 0, repeat = 0;
@@ -86,6 +142,14 @@ int main(void)
     init_data(DEVICE_COUNT_LED, DEVICE_ID, blink_array);
     init_leds(leds, DEVICE_COUNT_LED);
     init_button(DEVICE_BUTTON);
+=======
+    uint8_t blink_array[DEVICE_COUNT_LED] = DEVICE_ID_LIST;
+    uint8_t index_led = 0, repeat = 0, light = 0;
+    uint32_t time_cicle = 0, time_current = 0;
+
+    nrfx_systick_init();
+    init_rtc();
+>>>>>>> 0d52744 (add doble click with rtc)
     init_log();
 
     while (true)

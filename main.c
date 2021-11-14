@@ -22,7 +22,6 @@
 
 static volatile bool double_click = false;
 static volatile bool freeze = false;
-//static nrfx_systick_state_t time_state;
 
 static nrfx_rtc_t rtc_timer =  NRFX_RTC_INSTANCE(0);
 static uint32_t prev_time = 0;
@@ -73,9 +72,7 @@ void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
  }
 
 void rtc_handler(nrfx_rtc_int_type_t int_type)
-{
-
-}
+{}
 
  void init_rtc(void)
  {

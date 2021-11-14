@@ -4831,7 +4831,7 @@
  
 
 #ifndef RTC1_ENABLED
-#define RTC1_ENABLED 1
+#define RTC1_ENABLED 0
 #endif
 
 // <q> RTC2_ENABLED  - Enable RTC2 instance

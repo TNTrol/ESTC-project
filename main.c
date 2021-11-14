@@ -4,7 +4,7 @@
 #include "gpio_module/gpio_module.h"
 #include "nrfx_systick.h"
 #include "nrfx_gpiote.h"
-
+#include "nrfx_rtc.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -24,6 +24,8 @@ static volatile bool double_click = false;
 static volatile bool freeze = false;
 static nrfx_systick_state_t time_state;
 
+//static nrfx_rtc_init rtc_timer =  NRFX_RTC_INSTANCE(0);
+
  void init_log(void)
  {
     APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
@@ -41,13 +43,13 @@ static nrfx_systick_state_t time_state;
  
 void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
-    if(double_click)
+    if(!double_click)
     {
         nrfx_systick_get(&time_state);
         double_click = true;
         return;
     }
-    else if(nrfx_systick_test(&time_state, DEVICE_BUTTON_DELAY_MIN) && !nrfx_systick_test(&time_state, DEVICE_BUTTON_DELAY_MAX))
+    if(nrfx_systick_test(&time_state, DEVICE_BUTTON_DELAY_MIN) && !nrfx_systick_test(&time_state, DEVICE_BUTTON_DELAY_MAX))
     {
         freeze = !freeze;
     }
@@ -68,6 +70,18 @@ void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
     nrfx_gpiote_in_init(BUTTON_1, &btn_gpiote_cfg, &button_pressed_handler);
     nrfx_gpiote_in_event_enable(BUTTON_1, true);
  }
+
+// void rtc_handler(nrfx_rtc_int_type_t int_type)
+// {
+
+// }
+
+//  void init_rtc(void)
+//  {
+//     nrfx_rtc_config_t conf = NRFX_RTC_DEFAULT_CONFIG;
+//     nrfx_rtc_init(&rtc_timer, &conf, rtc_handler);
+//     nrfx_rtc_enable(&rtc_timer);
+//  }
 
 int main(void)
 {

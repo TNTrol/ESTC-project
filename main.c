@@ -1,9 +1,19 @@
+
+/** @file
+ *
+ * @defgroup blinky_example_main main.c
+ * @{
+ * @ingroup blinky_example
+ * @brief Blinky Example Application main file.
+ *
+ * This file contains the source code for a sample application to blink LEDs.
+ *
+ */
+
 #include <stdbool.h>
 #include <stdint.h>
-#include "nrf_drv_systick.h"
 #include "nrf_delay.h"
-#include "gpio_module/gpio_module.h"
-
+#include "nrf_gpio.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -16,7 +26,6 @@
 #define DEVICE_DISCRETE_DELAY 1U
 #define DEVICE_DELAY_BLINK 500
 #define DEVICE_TIME 10U
-<<<<<<< HEAD
 #define DEVICE_BUTTON_DELAY_MIN 1000
 #define DEVICE_BUTTON_DELAY_MAX 15000
 
@@ -74,9 +83,6 @@ void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 
 void rtc_handler(nrfx_rtc_int_type_t int_type)
 {
-=======
-
->>>>>>> af02e6933d79b68cd5595455e49c2bc6819fa3ed
 
 }
 
@@ -87,82 +93,35 @@ void rtc_handler(nrfx_rtc_int_type_t int_type)
     nrfx_rtc_enable(&rtc_timer);
  }
 
- void make_blink(uint8_t index_led, uint32_t time1, uint32_t time2)
- {
-    invert_led(index_led);
-    nrfx_systick_delay_us(DEVICE_TIME * (time1));
-    invert_led(index_led);
-    nrfx_systick_delay_us(DEVICE_TIME * time2);
- }
-
 int main(void)
 {
-<<<<<<< HEAD
-=======
-    
->>>>>>> af02e6933d79b68cd5595455e49c2bc6819fa3ed
     uint8_t blink_array[DEVICE_COUNT_LED] = DEVICE_ID_LIST;
     uint8_t index_led = 0, repeat = 0, light = 0;
     uint32_t time_cicle = 0, time_current = 0;
 
     nrfx_systick_init();
-<<<<<<< HEAD
     init_rtc();
-=======
->>>>>>> af02e6933d79b68cd5595455e49c2bc6819fa3ed
     init_log();
-    init_leds();
-    init_button();
 
     while (true)
     {
         LOG_BACKEND_USB_PROCESS();
-        NRF_LOG_PROCESS();
-        if(!get_value_button())
+        if(!nrf_gpio_pin_read(DEVICE_BUTTON))
         {
-            if(DEVICE_DELAY_CICLE > time_cicle)  
+            if(blink_array[index_led] <= repeat)
             {
-                if(!(++time_current % (DEVICE_DELAY_BLINK / DEVICE_DELAY_CICLE)))
-                {
-                    time_cicle++;
-                }
-                if(blink_array[index_led] <= repeat)
-                {
-                    index_led = index_led + 1 < DEVICE_COUNT_LED ? index_led + 1 : 0;
-                    time_current = 0;
-                    time_cicle = 0;
-                    repeat = 0;
-                }
-                if(light)
-                {
-                    make_blink(index_led, DEVICE_DELAY_CICLE - time_cicle, time_cicle);
-                }
-                else
-                {    
-                    make_blink(index_led, time_cicle, DEVICE_DELAY_CICLE - time_cicle);    
-                }
-            }
-            else
-            {
-                time_cicle = 0;
-                time_current = 0;
-                light = ~light;
-                repeat = light ? repeat : repeat + 1;
-                if(!light)
-                {
-                    NRF_LOG_INFO("LEDS #%d is blinking\n", index_led);
-                }
-            }
+                index_led = index_led + 1 < DEVICE_COUNT_LED ? index_led + 1 : 0;
+                repeat = 0;
+            }   
+            make_blink(leds[index_led], DEVICE_BLINK);
+            ++repeat;
+
+            NRF_LOG_INFO("LEDS #%d is blinking\n", index_led);
+            NRF_LOG_PROCESS();
         }
-        else
-        {
-            off_led(index_led);
-        }
-        nrf_delay_ms(DEVICE_DISCRETE_DELAY);
     }   
-<<<<<<< HEAD
 }
 
-=======
-}
->>>>>>> af02e6933d79b68cd5595455e49c2bc6819fa3ed
+/**
+ *@}
+ **/

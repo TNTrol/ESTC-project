@@ -1,19 +1,10 @@
-
-/** @file
- *
- * @defgroup blinky_example_main main.c
- * @{
- * @ingroup blinky_example
- * @brief Blinky Example Application main file.
- *
- * This file contains the source code for a sample application to blink LEDs.
- *
- */
-
 #include <stdbool.h>
 #include <stdint.h>
 #include "nrf_delay.h"
-#include "nrf_gpio.h"
+#include "gpio_module/gpio_module.h"
+#include "nrfx_systick.h"
+#include "nrfx_gpiote.h"
+#include "nrfx_rtc.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -36,19 +27,14 @@ static volatile bool freeze = false;
 static nrfx_rtc_t rtc_timer =  NRFX_RTC_INSTANCE(0);
 static uint32_t prev_time = 0;
 
-
- void init_data(const uint32_t size, uint32_t id, uint8_t *array)
+ void init_log(void)
  {
-    uint32_t temp = 0;
-    for(int i = size - 1; i >= 0 ; --i)
-    {
-        temp = id % 10;
-        id /= 10;
-        array[i] = temp;
-    }
+    APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
+    NRF_LOG_INFO("Starting up the test project with USB logging");
+    NRF_LOG_DEFAULT_BACKENDS_INIT();
  }
 
- void init_leds(const uint8_t *leds, const uint32_t size)
+ void make_blink(uint8_t index_led, uint32_t time1, uint32_t time2)
  {
     invert_led(index_led);
     nrfx_systick_delay_us(DEVICE_TIME * (time1));
@@ -67,18 +53,23 @@ void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
     uint32_t t = nrfx_rtc_counter_get(&rtc_timer) - prev_time;
     if(t > DEVICE_BUTTON_DELAY_MIN && t < DEVICE_BUTTON_DELAY_MAX)
     {
-        nrf_gpio_cfg_output(leds[i]);
-        nrf_gpio_pin_write(leds[i], 1);
+        freeze = !freeze;
     }
     double_click = false;
 }
 
- inline void make_blink(const uint8_t pin, const uint32_t time)
+ void init_gpiote(void)
  {
-    nrf_gpio_pin_write(pin, 0);
-    nrf_delay_ms(time);
-    nrf_gpio_pin_write(pin, 1);
-    nrf_delay_ms(time);
+    nrfx_gpiote_init();
+    const nrfx_gpiote_in_config_t btn_gpiote_cfg = {
+        .sense = NRF_GPIOTE_POLARITY_HITOLO,
+        .pull = NRF_GPIO_PIN_PULLUP,
+        .is_watcher = false,
+        .hi_accuracy = false,
+        .skip_gpio_setup = true
+    };
+    nrfx_gpiote_in_init(BUTTON_1, &btn_gpiote_cfg, &button_pressed_handler);
+    nrfx_gpiote_in_event_enable(BUTTON_1, true);
  }
 
 void rtc_handler(nrfx_rtc_int_type_t int_type)
@@ -102,26 +93,54 @@ int main(void)
     nrfx_systick_init();
     init_rtc();
     init_log();
+    init_leds();
+    init_button();
+    init_gpiote();
 
     while (true)
     {
         LOG_BACKEND_USB_PROCESS();
-        if(!nrf_gpio_pin_read(DEVICE_BUTTON))
+        NRF_LOG_PROCESS();
+        if(freeze)
         {
-            if(blink_array[index_led] <= repeat)
+            if(DEVICE_DELAY_CICLE > time_cicle)  
             {
-                index_led = index_led + 1 < DEVICE_COUNT_LED ? index_led + 1 : 0;
-                repeat = 0;
-            }   
-            make_blink(leds[index_led], DEVICE_BLINK);
-            ++repeat;
-
-            NRF_LOG_INFO("LEDS #%d is blinking\n", index_led);
-            NRF_LOG_PROCESS();
+                if(!(++time_current % (DEVICE_DELAY_BLINK / DEVICE_DELAY_CICLE)))
+                {
+                    time_cicle++;
+                }
+                if(blink_array[index_led] <= repeat)
+                {
+                    index_led = index_led + 1 < DEVICE_COUNT_LED ? index_led + 1 : 0;
+                    time_current = 0;
+                    time_cicle = 0;
+                    repeat = 0;
+                }
+                if(light)
+                {
+                    make_blink(index_led, DEVICE_DELAY_CICLE - time_cicle, time_cicle);
+                }
+                else
+                {    
+                    make_blink(index_led, time_cicle, DEVICE_DELAY_CICLE - time_cicle);    
+                }
+            }
+            else
+            {
+                time_cicle = 0;
+                time_current = 0;
+                light = ~light;
+                repeat = light ? repeat : repeat + 1;
+                if(!light)
+                {
+                    NRF_LOG_INFO("LEDS #%d is blinking\n", index_led);
+                }
+            }
         }
+        else
+        {
+            off_led(index_led);
+        }
+        nrf_delay_ms(DEVICE_DISCRETE_DELAY);
     }   
 }
-
-/**
- *@}
- **/

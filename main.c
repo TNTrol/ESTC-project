@@ -43,18 +43,18 @@ static uint32_t prev_time = 0;
  
 void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
-    if(!double_click)
+    if(double_click)
     {
-        prev_time = nrfx_rtc_counter_get(&rtc_timer);
-        double_click = true;
-        return;
+        uint32_t t = nrfx_rtc_counter_get(&rtc_timer) - prev_time;
+        if(t > DEVICE_BUTTON_DELAY_MIN && t < DEVICE_BUTTON_DELAY_MAX)
+        {
+            freeze = !freeze;
+            double_click = false;
+            return;
+        }
     }
-    uint32_t t = nrfx_rtc_counter_get(&rtc_timer) - prev_time;
-    if(t > DEVICE_BUTTON_DELAY_MIN && t < DEVICE_BUTTON_DELAY_MAX)
-    {
-        freeze = !freeze;
-    }
-    double_click = false;
+    prev_time = nrfx_rtc_counter_get(&rtc_timer);
+    double_click = true;
 }
 
  void init_gpiote(void)

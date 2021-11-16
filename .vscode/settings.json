@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "nrfx_gpiote.h": "c",
+        "nrfx_systick.h": "c",
+        "gpio_module.h": "c",
+        "nrf_delay.h": "c"
+    }
+}

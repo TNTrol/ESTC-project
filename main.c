@@ -33,14 +33,6 @@ static uint32_t prev_time = 0;
     NRF_LOG_INFO("Starting up the test project with USB logging");
     NRF_LOG_DEFAULT_BACKENDS_INIT();
  }
-
- void make_blink(uint8_t index_led, uint32_t time1, uint32_t time2)
- {
-    invert_led(index_led);
-    nrfx_systick_delay_us(DEVICE_TIME * (time1));
-    invert_led(index_led);
-    nrfx_systick_delay_us(DEVICE_TIME * time2);
- }
  
 void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
@@ -121,21 +113,19 @@ int main(void)
                         time_cicle = 0;
                         repeat = 0;
                         light_cicle = 0;
-                        //time_pwn = DEVICE_DELAY_CICLE - time_cicle;
                     }
+                    
+                    nrfx_systick_get(&state);
+                    write_led(index_led, light_cicle);
+                    light_cicle = !light_cicle;
                     if(light)
-                    {
-                        //make_blink(index_led, DEVICE_DELAY_CICLE - time_cicle, time_cicle);
-                        write_led(index_led, light_cicle);
-                        time_pwn = !light_cicle ?  DEVICE_DELAY_CICLE - time_cicle : time_cicle;
+                    {                       
+                        time_pwn = light_cicle ?  DEVICE_DELAY_CICLE - time_cicle : time_cicle;
                     }
                     else
                     {    
-                        write_led(index_led, light_cicle);
-                        time_pwn = !light_cicle ? time_cicle : DEVICE_DELAY_CICLE - time_cicle;   
-                    }
-                    light_cicle = !light_cicle;
-                    nrfx_systick_get(&state);
+                        time_pwn = light_cicle ? time_cicle : DEVICE_DELAY_CICLE - time_cicle;   
+                    }                
                 }
                 else
                 {
@@ -155,6 +145,5 @@ int main(void)
             off_led(index_led);
             nrf_delay_ms(DEVICE_DISCRETE_DELAY);
         }
-        
     }   
 }

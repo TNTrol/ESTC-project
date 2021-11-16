@@ -22,7 +22,6 @@
 
 static volatile bool double_click = false;
 static volatile bool freeze = false;
-//static nrfx_systick_state_t time_state;
 
 static nrfx_rtc_t rtc_timer =  NRFX_RTC_INSTANCE(0);
 static uint32_t prev_time = 0;

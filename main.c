@@ -1,74 +1,30 @@
-
-/** @file
- *
- * @defgroup blinky_example_main main.c
- * @{
- * @ingroup blinky_example
- * @brief Blinky Example Application main file.
- *
- * This file contains the source code for a sample application to blink LEDs.
- *
- */
-
 #include <stdbool.h>
 #include <stdint.h>
 #include "nrf_delay.h"
-#include "nrf_gpio.h"
+#include "gpio_module/gpio_module.h"
+#include "nrfx_systick.h"
+#include "nrfx_gpiote.h"
+#include "nrfx_rtc.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
-//#include "app_usbd.h"
-//#include "app_usbd_serial_num.h"
+#define DEVICE_ID_LIST {6, 5, 7, 9}
+#define DEVICE_COUNT_LED 4U
+#define DEVICE_DELAY_CICLE 100U
+#define DEVICE_DISCRETE_DELAY 1U
+#define DEVICE_DELAY_BLINK 500
+#define DEVICE_TIME 10U
+#define DEVICE_BUTTON_DELAY_MIN 1000
+#define DEVICE_BUTTON_DELAY_MAX 15000
 
-#define DEVICE_ID 6579
-#define DEVICE_LED1 NRF_GPIO_PIN_MAP(0, 6)
-#define DEVICE_LED2 NRF_GPIO_PIN_MAP(0, 8)
-#define DEVICE_LED3 NRF_GPIO_PIN_MAP(1, 9)
-#define DEVICE_LED4 NRF_GPIO_PIN_MAP(0, 12)
-#define DEVICE_LEDS {DEVICE_LED1, DEVICE_LED2, DEVICE_LED3, DEVICE_LED4}
-#define DEVICE_SIZE 4
-#define DEVICE_TIME 500
-#define DEVICE_BUTTON NRF_GPIO_PIN_MAP(1, 6)
+static volatile bool double_click = false;
+static volatile bool freeze = false;
 
-/**
- * @brief Function for application main entry.
- */
-
- void init_data(const uint32_t size, uint32_t id, uint8_t *array)
- {
-    uint32_t temp = 0;
-    for(int i = size - 1; i >= 0 ; --i)
-    {
-        temp = id % 10;
-        id /= 10;
-        array[i] = temp;
-    }
- }
-
- void init_leds(const uint8_t *leds, const uint32_t size)
- {
-    for(int i = 0; i < size; ++i)
-    {
-        nrf_gpio_cfg_output(leds[i]);
-        nrf_gpio_pin_write(leds[i], 1);
-    }
- }
-
- void make_blink(const uint8_t pin, const uint32_t time)
- {
-    nrf_gpio_pin_write(pin, 0);
-    nrf_delay_ms(time);
-    nrf_gpio_pin_write(pin, 1);
-    nrf_delay_ms(time);
- }
-
- void init_but(uint8_t button)
- {
-     nrf_gpio_cfg_input(button, NRF_GPIO_PIN_PULLUP);
- }
+static nrfx_rtc_t rtc_timer =  NRFX_RTC_INSTANCE(0);
+static uint32_t prev_time = 0;
 
  void init_log(void)
  {
@@ -77,36 +33,111 @@
     NRF_LOG_DEFAULT_BACKENDS_INIT();
  }
 
+ void make_blink(uint8_t index_led, uint32_t time1, uint32_t time2)
+ {
+    invert_led(index_led);
+    nrfx_systick_delay_us(DEVICE_TIME * (time1));
+    invert_led(index_led);
+    nrfx_systick_delay_us(DEVICE_TIME * time2);
+ }
+ 
+void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
+{
+    if(double_click)
+    {
+        uint32_t t = nrfx_rtc_counter_get(&rtc_timer) - prev_time;
+        if(t > DEVICE_BUTTON_DELAY_MIN && t < DEVICE_BUTTON_DELAY_MAX)
+        {
+            freeze = !freeze;
+            double_click = false;
+            return;
+        }
+    }
+    prev_time = nrfx_rtc_counter_get(&rtc_timer);
+    double_click = true;
+}
+
+ void init_gpiote(void)
+ {
+    nrfx_gpiote_init();
+    const nrfx_gpiote_in_config_t btn_gpiote_cfg = {
+        .sense = NRF_GPIOTE_POLARITY_HITOLO,
+        .pull = NRF_GPIO_PIN_PULLUP,
+        .is_watcher = false,
+        .hi_accuracy = false,
+        .skip_gpio_setup = true
+    };
+    nrfx_gpiote_in_init(BUTTON_1, &btn_gpiote_cfg, &button_pressed_handler);
+    nrfx_gpiote_in_event_enable(BUTTON_1, true);
+ }
+
+void rtc_handler(nrfx_rtc_int_type_t int_type)
+{}
+
+ void init_rtc(void)
+ {
+    nrfx_rtc_config_t conf = NRFX_RTC_DEFAULT_CONFIG;
+    nrfx_rtc_init(&rtc_timer, &conf, rtc_handler);
+    nrfx_rtc_enable(&rtc_timer);
+ }
+
 int main(void)
 {
-    uint8_t blink_array[DEVICE_SIZE] = {0};
-    const uint8_t leds[DEVICE_SIZE] = DEVICE_LEDS;
-    uint8_t index_led = 0, repeat = 0;
-    
-    init_data(DEVICE_SIZE, DEVICE_ID, blink_array);
-    init_leds(leds, DEVICE_SIZE);
-    init_but(DEVICE_BUTTON);
+    uint8_t blink_array[DEVICE_COUNT_LED] = DEVICE_ID_LIST;
+    uint8_t index_led = 0, repeat = 0, light = 0;
+    uint32_t time_cicle = 0, time_current = 0;
+
+    nrfx_systick_init();
+    init_rtc();
     init_log();
+    init_leds();
+    init_button();
+    init_gpiote();
 
     while (true)
     {
         LOG_BACKEND_USB_PROCESS();
-        if(! nrf_gpio_pin_read(DEVICE_BUTTON))
+        NRF_LOG_PROCESS();
+        if(freeze)
         {
-            if(blink_array[index_led] <= repeat)
+            if(DEVICE_DELAY_CICLE > time_cicle)  
             {
-                index_led = index_led + 1 < DEVICE_SIZE ? index_led + 1 : 0;
-                repeat = 0;
-            }   
-            make_blink(leds[index_led], DEVICE_TIME);
-            ++repeat;
-
-            NRF_LOG_INFO("LEDS #%d is blinking\n", index_led);
-            NRF_LOG_PROCESS();
+                if(!(++time_current % (DEVICE_DELAY_BLINK / DEVICE_DELAY_CICLE)))
+                {
+                    time_cicle++;
+                }
+                if(blink_array[index_led] <= repeat)
+                {
+                    index_led = index_led + 1 < DEVICE_COUNT_LED ? index_led + 1 : 0;
+                    time_current = 0;
+                    time_cicle = 0;
+                    repeat = 0;
+                }
+                if(light)
+                {
+                    make_blink(index_led, DEVICE_DELAY_CICLE - time_cicle, time_cicle);
+                }
+                else
+                {    
+                    make_blink(index_led, time_cicle, DEVICE_DELAY_CICLE - time_cicle);    
+                }
+            }
+            else
+            {
+                time_cicle = 0;
+                time_current = 0;
+                light = ~light;
+                repeat = light ? repeat : repeat + 1;
+                if(!light)
+                {
+                    NRF_LOG_INFO("LEDS #%d is blinking\n", index_led);
+                }
+            }
         }
+        else
+        {
+            off_led(index_led);
+        }
+        nrf_delay_ms(DEVICE_DISCRETE_DELAY);
     }   
 }
-
-/**
- *@}
- **/

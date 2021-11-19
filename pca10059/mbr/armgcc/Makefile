@@ -66,6 +66,7 @@ SRC_FILES += \
   $(PROJ_DIR)/main.c \
   $(PROJ_DIR)/gpio_module/gpio_module.c \
   $(PROJ_DIR)/pwm_module/pwm_module.c \
+  $(PROJ_DIR)/button_module/button_module.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \

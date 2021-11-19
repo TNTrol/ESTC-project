@@ -1,11 +1,9 @@
 #include <stdbool.h>
 #include <stdint.h>
-#include "nrf_delay.h"
 #include "gpio_module/gpio_module.h"
-#include "nrfx_systick.h"
-#include "nrfx_gpiote.h"
 #include "nrfx_rtc.h"
 #include "pwm_module/pwm_module.h"
+#include "button_module/button_module.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -57,20 +55,6 @@ void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
     m_prev_button_time = nrfx_rtc_counter_get(&m_rtc_timer);
     m_double_click = true;
 }
-
- void init_gpiote(void)
- {
-    nrfx_gpiote_init();
-    const nrfx_gpiote_in_config_t btn_gpiote_cfg = {
-        .sense = NRF_GPIOTE_POLARITY_HITOLO,
-        .pull = NRF_GPIO_PIN_PULLUP,
-        .is_watcher = false,
-        .hi_accuracy = false,
-        .skip_gpio_setup = true
-    };
-    nrfx_gpiote_in_init(BUTTON_1, &btn_gpiote_cfg, &button_pressed_handler);
-    nrfx_gpiote_in_event_enable(BUTTON_1, true);
- }
 
 void rtc_handler(nrfx_rtc_int_type_t int_type)
 {}
@@ -125,13 +109,13 @@ void rtc_handler(nrfx_rtc_int_type_t int_type)
 
 int main(void)
 {
-    nrfx_systick_init();
+    //nrfx_systick_init();
     init_rtc();
     init_log();
     init_leds();
     init_button();
-    init_gpiote();
     init_pwn_module_for_leds(pwn_custom_handler, m_max_time);
+    init_gpiote_button(button_pressed_handler);
 
     while (true)
     {

@@ -19,9 +19,9 @@ void init_pwn_module_for_leds(nrfx_pwm_handler_t  handler, uint32_t max_time)
         .output_pins =
         {
             LED_1 | NRFX_PWM_PIN_INVERTED, // channel 0
-            LED_2 | NRFX_PWM_PIN_INVERTED, // channel 1
-            LED_3 | NRFX_PWM_PIN_INVERTED, // channel 2
-            LED_4 | NRFX_PWM_PIN_INVERTED  // channel 3
+            LED_2 | NRFX_PWM_PIN_NOT_USED, // channel 1
+            LED_3 | NRFX_PWM_PIN_NOT_USED, // channel 2
+            LED_4 | NRFX_PWM_PIN_NOT_USED // channel 3
         },
         .irq_priority = APP_IRQ_PRIORITY_LOWEST,
         .base_clock   = NRF_PWM_CLK_1MHz,

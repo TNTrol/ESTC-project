@@ -97,8 +97,6 @@ static void pwn_custom_handler(nrfx_pwm_evt_type_t event_type)
 
 int main(void)
 {
-    //nrfx_systick_init();
-    //init_rtc();
     init_log();
     init_leds();
     init_button();
@@ -110,7 +108,7 @@ int main(void)
     {
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
-        if(m_state && is_long_click())
+        if(m_state && is_long_press())
         {
             NRF_LOG_INFO("HEY %d", t++);
         }

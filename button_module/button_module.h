@@ -9,5 +9,5 @@
 #define DEVICE_BUTTON_DELAY_MAX 15000
 
 void init_gpiote_button(nrfx_gpiote_evt_handler_t evt_handler);
-bool is_long_click();
+bool is_long_press();
 #endif

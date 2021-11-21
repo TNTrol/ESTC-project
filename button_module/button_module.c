@@ -61,7 +61,7 @@ void init_gpiote_button(nrfx_gpiote_evt_handler_t evt_handler)
     init_rtc();
 }
 
-bool is_long_click()
+bool is_long_press()
 {
     return m_long && nrfx_rtc_counter_get(&m_rtc_timer) - m_prev_button_time > DEVICE_BUTTON_DELAY_MAX;
 }

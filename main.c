@@ -31,7 +31,7 @@ void init_log(void)
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 }
 
-void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
+void double_button_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
     m_state = m_state == V_MOD ? NONE : m_state + 1;
     m_phase = 0;
@@ -92,7 +92,6 @@ static void pwn_control_led_handler(nrfx_pwm_evt_type_t event_type)
 
 static void pwn_rgb_led_handler(nrfx_pwm_evt_type_t event_type)
 {
-
 }
 
 void rgb_on()
@@ -112,9 +111,9 @@ int main(void)
     init_log();
     init_leds();
     init_button();
-    init_pwn_module_for_leds(&m_pwm, pwn_control_led_handler, m_max_time, 1);
+    init_pwn_module_for_leds(&m_pwm, pwn_control_led_handler, m_max_time, CONTROL_MASK);
     init_pwn_module_for_leds(&m_pwm_rgb, pwn_rgb_led_handler, m_max_time, RGB_MASK);
-    init_gpiote_button(button_pressed_handler);
+    init_gpiote_button(double_button_handler);
 
     while (true)
     {

@@ -15,8 +15,8 @@
 
 #define CONTROL_MASK 1
 #define RGB_MASK ((1 << 1) | (1 << 2) | (1 << 3))
+#define MAX_TIME_PWM_CICLE 20000
 
-static uint16_t const   m_max_time  = 20000;
 static uint16_t         m_pwm_step  = 200;
 static volatile uint8_t m_phase     = 0;
 static modificator_t    m_state     = NONE;
@@ -40,12 +40,12 @@ void double_button_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
     case V_MOD:
     {
         m_pwm_step = 0;
-        set_value_of_channel(&m_pwm ,m_phase >> 1, m_max_time);
+        set_value_of_channel(&m_pwm ,m_phase >> 1, MAX_TIME_PWM_CICLE);
         break;
     }
     case S_MOD:
     {
-        m_pwm_step = m_max_time / 4;
+        m_pwm_step = MAX_TIME_PWM_CICLE / 4;
         break;
     }
     case H_MOD:
@@ -79,7 +79,7 @@ static void pwn_control_led_handler(nrfx_pwm_evt_type_t event_type)
         else
         {
             value += m_pwm_step;
-            next_phase = value >= m_max_time;
+            next_phase = value >= MAX_TIME_PWM_CICLE;
         }
 
         set_value_of_channel(&m_pwm, channel, value);
@@ -96,7 +96,7 @@ static void pwn_rgb_led_handler(nrfx_pwm_evt_type_t event_type)
 
 void rgb_on()
 {
-    uint32_t step = m_max_time / 255;
+    uint32_t step = MAX_TIME_PWM_CICLE / 255;
     uint32_t r = m_rgb_color.r * step, g = m_rgb_color.g * step, b = m_rgb_color.b * step;
     set_value_of_channel(&m_pwm_rgb, 1, r);
     set_value_of_channel(&m_pwm_rgb, 2, g);
@@ -111,8 +111,8 @@ int main(void)
     init_log();
     init_leds();
     init_button();
-    init_pwn_module_for_leds(&m_pwm, pwn_control_led_handler, m_max_time, CONTROL_MASK);
-    init_pwn_module_for_leds(&m_pwm_rgb, pwn_rgb_led_handler, m_max_time, RGB_MASK);
+    init_pwn_module_for_leds(&m_pwm, pwn_control_led_handler, MAX_TIME_PWM_CICLE, CONTROL_MASK);
+    init_pwn_module_for_leds(&m_pwm_rgb, pwn_rgb_led_handler, MAX_TIME_PWM_CICLE, RGB_MASK);
     init_gpiote_button(double_button_handler);
 
     while (true)

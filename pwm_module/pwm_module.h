@@ -3,8 +3,17 @@
 
 #include "nrfx_pwm.h"
 
-void init_pwn_module_for_leds(nrfx_pwm_handler_t  handler, uint32_t max_time);
-uint16_t get_value_of_channel(uint8_t index);
-void set_value_of_channel(uint8_t index, uint16_t value);
+#define GET_DEFAULT_CTX(id) {.pwm = NRFX_PWM_INSTANCE(id)}
+
+typedef struct 
+{
+    nrf_pwm_values_individual_t seq_values;
+    nrfx_pwm_t pwm;
+    nrf_pwm_sequence_t seq;
+}pwm_ctx_t;
+
+void init_pwn_module_for_leds(pwm_ctx_t* ctx, nrfx_pwm_handler_t  handler, uint32_t max_time, uint8_t mask);
+uint16_t get_value_of_channel(pwm_ctx_t* ctx, uint8_t index);
+void set_value_of_channel(pwm_ctx_t* ctx, uint8_t index, uint16_t value);
 
 #endif

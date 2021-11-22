@@ -21,6 +21,7 @@
         "*.inc": "c",
         "button_module.h": "c",
         "app_util_platform.h": "c",
-        "nrfx_pwm.h": "c"
+        "nrfx_pwm.h": "c",
+        "thread": "c"
     }
 }

@@ -7,7 +7,7 @@ typedef struct
     uint16_t h;
     uint8_t v;
     uint8_t s;
-}hvs_t;
+}hsv_t;
 
 typedef struct 
 {
@@ -16,7 +16,7 @@ typedef struct
     uint8_t b;
 }rgb_t;
 
-void hsv_to_rgb(hvs_t* hvs, rgb_t *rgb);
-void rgb_to_hsv(hvs_t* hvs, rgb_t *rgb);
+void hsv_to_rgb(hsv_t* hvs, rgb_t *rgb);
+void rgb_to_hsv(hsv_t* hvs, rgb_t *rgb);
 
 #endif

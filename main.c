@@ -1,7 +1,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "gpio_module/gpio_module.h"
-#include "nrfx_rtc.h"
 #include "pwm_module/pwm_module.h"
 #include "button_module/button_module.h"
 #include "util_module/utils.h"
@@ -90,10 +89,6 @@ static void pwn_control_led_handler(nrfx_pwm_evt_type_t event_type)
     }
 }
 
-static void pwn_rgb_led_handler(nrfx_pwm_evt_type_t event_type)
-{
-}
-
 void rgb_on()
 {
     uint32_t step = MAX_TIME_PWM_CICLE / 255;
@@ -103,7 +98,6 @@ void rgb_on()
     set_value_of_channel(&m_pwm_rgb, 3, b);
 }
 
-
 int main(void)
 {
     hsv_t color = {0, 0, 0};
@@ -112,7 +106,7 @@ int main(void)
     init_leds();
     init_button();
     init_pwn_module_for_leds(&m_pwm, pwn_control_led_handler, MAX_TIME_PWM_CICLE, CONTROL_MASK);
-    init_pwn_module_for_leds(&m_pwm_rgb, pwn_rgb_led_handler, MAX_TIME_PWM_CICLE, RGB_MASK);
+    init_pwn_module_for_leds(&m_pwm_rgb, NULL, MAX_TIME_PWM_CICLE, RGB_MASK);
     init_gpiote_button(double_button_handler);
 
     while (true)

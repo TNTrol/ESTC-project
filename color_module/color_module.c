@@ -1,8 +1,8 @@
 #include "color_module.h"
 
-void hsv_to_rgb(hsv_t *hsv, rgb_t *rgb)
+void hsv_to_rgb(const hsv_t *hsv, rgb_t *rgb)
 {
- uint32_t region, remainder, p, q, t;
+    uint32_t region, remainder, p, q, t;
     if (hsv->s == 0)
     {
         rgb->r = hsv->v;
@@ -20,19 +20,29 @@ void hsv_to_rgb(hsv_t *hsv, rgb_t *rgb)
     switch (region)
     {
         case 0:
-            rgb->r = hsv->v; rgb->g = t; rgb->b = p;
+            rgb->r = hsv->v; 
+            rgb->g = t; 
+            rgb->b = p;
             break;
         case 1:
-            rgb->r = q; rgb->g = hsv->v; rgb->b = p;
+            rgb->r = q; 
+            rgb->g = hsv->v; 
+            rgb->b = p;
             break;
         case 2:
-            rgb->r = p; rgb->g = hsv->v; rgb->b = t;
+            rgb->r = p; 
+            rgb->g = hsv->v; 
+            rgb->b = t;
             break;
         case 3:
-            rgb->r = p; rgb->g = q; rgb->b = hsv->v;
+            rgb->r = p; 
+            rgb->g = q; 
+            rgb->b = hsv->v;
             break;
         case 4:
-            rgb->r = t; rgb->g = p; rgb->b = hsv->v;
+            rgb->r = t; 
+            rgb->g = p; 
+            rgb->b = hsv->v;
             break;
         default:
             rgb->r = hsv->v; rgb->g = p; rgb->b = q;
@@ -40,6 +50,6 @@ void hsv_to_rgb(hsv_t *hsv, rgb_t *rgb)
     }
 }
 
-void rgb_to_hsv(hsv_t *hvs, rgb_t *rgb)
+void rgb_to_hsv(const rgb_t *rgb, hsv_t* hvs)
 {
 }

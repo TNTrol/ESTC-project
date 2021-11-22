@@ -18,7 +18,7 @@
 
 static uint16_t         m_pwm_step  = 200;
 static volatile uint8_t m_phase     = 0;
-static modificator_t    m_state     = NONE;
+static modificator_t    m_state     = MOD_NONE;
 static rgb_t            m_rgb_color = {0, 0, 0};
 static pwm_ctx_t        m_pwm       = GET_DEFAULT_CTX(0);
 static pwm_ctx_t        m_pwm_rgb   = GET_DEFAULT_CTX(1);
@@ -32,35 +32,35 @@ void init_log(void)
 
 void double_button_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
-    m_state = m_state == V_MOD ? NONE : m_state + 1;
+    m_state = MOD_INCREMENT(m_state);
     m_phase = 0;
     switch (m_state)
     {
-    case V_MOD:
+    case MOD_V:
     {
         m_pwm_step = 0;
-        set_value_of_channel(&m_pwm ,m_phase >> 1, MAX_TIME_PWM_CICLE);
+        set_value_of_channel(&m_pwm, m_phase, MAX_TIME_PWM_CICLE);
         break;
     }
-    case S_MOD:
+    case MOD_S:
     {
         m_pwm_step = MAX_TIME_PWM_CICLE / 4;
         break;
     }
-    case H_MOD:
+    case MOD_H:
     {
         m_pwm_step = 300;
         break;
     }
     default:
-        set_value_of_channel(&m_pwm, m_phase >> 1, 0);
+        set_value_of_channel(&m_pwm, m_phase, 0);
         break;
     }
 }
 
 static void pwn_control_led_handler(nrfx_pwm_evt_type_t event_type)
 {
-    if (!m_state)
+    if (m_state == MOD_NONE)
     {
         return;
     }
@@ -80,7 +80,6 @@ static void pwn_control_led_handler(nrfx_pwm_evt_type_t event_type)
             value += m_pwm_step;
             next_phase = value >= MAX_TIME_PWM_CICLE;
         }
-
         set_value_of_channel(&m_pwm, channel, value);
         if (next_phase)
         {
@@ -91,8 +90,10 @@ static void pwn_control_led_handler(nrfx_pwm_evt_type_t event_type)
 
 void rgb_on()
 {
-    uint32_t step = MAX_TIME_PWM_CICLE / 255;
-    uint32_t r = m_rgb_color.r * step, g = m_rgb_color.g * step, b = m_rgb_color.b * step;
+    uint32_t step   = MAX_TIME_PWM_CICLE / 255;
+    uint32_t r      = m_rgb_color.r * step;
+    uint32_t g      = m_rgb_color.g * step;
+    uint32_t b      = m_rgb_color.b * step;
     set_value_of_channel(&m_pwm_rgb, 1, r);
     set_value_of_channel(&m_pwm_rgb, 2, g);
     set_value_of_channel(&m_pwm_rgb, 3, b);
@@ -102,6 +103,7 @@ int main(void)
 {
     hsv_t color = {0, 0, 0};
     uint16_t h = 0, s = 0, v = 0;
+    
     init_log();
     init_leds();
     init_button();
@@ -113,25 +115,25 @@ int main(void)
     {
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
-        if(m_state && is_long_press())
+        if(m_state  != MOD_NONE && is_long_press())
         {
             NRF_LOG_INFO("State %d Color r=%d, g=%d, b=%d", m_state, m_rgb_color.r, m_rgb_color.g, m_rgb_color.b);
             switch (m_state)
             {
-            case H_MOD:
-                h = h == 1023 ? 0 : h + 1;
+            case MOD_H:
+                h = CICLE_INCREMENT(h, 1024);
                 color.h = h / 4;
                 hsv_to_rgb(&color, &m_rgb_color);
                 rgb_on();
                 break;
-            case S_MOD:
-                s = s == 1023 ? 0 : s + 1;
+            case MOD_S:
+                s = CICLE_INCREMENT(s, 1024);
                 color.s = s / 4;
                 hsv_to_rgb(&color, &m_rgb_color);
                 rgb_on();
                 break;
             default:
-                v = v == 1023 ? 0 : v + 1;
+                v = CICLE_INCREMENT(v, 1024);
                 color.v = v / 4;
                 hsv_to_rgb(&color, &m_rgb_color);
                 rgb_on();

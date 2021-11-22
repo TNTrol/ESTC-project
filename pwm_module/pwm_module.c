@@ -2,7 +2,7 @@
 #include "pca10059.h"
 #include "app_util_platform.h"
 
-#define UNMASK(s, n) ((s >> n) & 1 ? NRFX_PWM_PIN_INVERTED : NRFX_PWM_PIN_NOT_USED)
+#define UNMASK(s, n) (((s) >> (n)) & 1 ? NRFX_PWM_PIN_INVERTED : NRFX_PWM_PIN_NOT_USED)
 
 static void init_seq(pwm_ctx_t* ctx)
 {
@@ -23,10 +23,10 @@ void init_pwn_module_for_leds(pwm_ctx_t* ctx, nrfx_pwm_handler_t  handler, uint3
     {
         .output_pins =
         {
-            LED_1 | UNMASK(mask, 0),    // channel 0
-            LED_2 | UNMASK(mask, 1),    // channel 1
-            LED_3 | UNMASK(mask, 2),    // channel 2
-            LED_4 | UNMASK(mask, 3)     // channel 3
+            LED_1 | UNMASK(mask, 0),
+            LED_2 | UNMASK(mask, 1),
+            LED_3 | UNMASK(mask, 2),
+            LED_4 | UNMASK(mask, 3)
         },
         .irq_priority = APP_IRQ_PRIORITY_LOWEST,
         .base_clock   = NRF_PWM_CLK_1MHz,

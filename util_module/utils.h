@@ -1,12 +1,15 @@
 #ifndef STRUCTS_H
 #define STRUCTS_H
 
+#define CICLE_INCREMENT(number, max) (((number) + 1) % max)
+#define MOD_INCREMENT(mod)  CICLE_INCREMENT(mod, MOD_NUMBER)
 typedef enum
 {
-    NONE = 0,
-    H_MOD,
-    S_MOD,
-    V_MOD
+    MOD_NONE = 0,
+    MOD_H,
+    MOD_S,
+    MOD_V,
+    MOD_NUMBER
 }modificator_t;
 
 

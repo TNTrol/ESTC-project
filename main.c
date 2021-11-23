@@ -121,19 +121,19 @@ int main(void)
             switch (m_state)
             {
             case MOD_H:
-                h = CICLE_INCREMENT(h, 1024);
+                h = CIRCLE_INCREMENT(h, 1024);
                 hsv_color.h = h / 4;
                 hsv_to_rgb(&hsv_color, &m_rgb_color);
                 rgb_on();
                 break;
             case MOD_S:
-                s = CICLE_INCREMENT(s, 1024);
+                s = CIRCLE_INCREMENT(s, 1024);
                 hsv_color.s = s / 4;
                 hsv_to_rgb(&hsv_color, &m_rgb_color);
                 rgb_on();
                 break;
             default:
-                v = CICLE_INCREMENT(v, 1024);
+                v = CIRCLE_INCREMENT(v, 1024);
                 hsv_color.v = v / 4;
                 hsv_to_rgb(&hsv_color, &m_rgb_color);
                 rgb_on();

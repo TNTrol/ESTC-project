@@ -20,12 +20,12 @@
 
 typedef struct 
 {
+    nrfx_rtc_t rtc_timer;
+    nrfx_gpiote_evt_handler_t double_button_evt_handler;
+    uint32_t prev_button_time;
     bool is_first_click;
     bool is_long_press;
     bool is_button_press;
-    nrfx_rtc_t rtc_timer;
-    uint32_t prev_button_time;
-    nrfx_gpiote_evt_handler_t double_button_evt_handler ;
 }button_module_ctx_t;
 
 

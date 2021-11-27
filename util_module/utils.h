@@ -1,8 +1,11 @@
 #ifndef STRUCTS_H
 #define STRUCTS_H
 
-#define CIRCLE_INCREMENT(number, max) (((number) + 1) % (max))
-#define MOD_INCREMENT(mod)  CIRCLE_INCREMENT(mod, MOD_NUMBER)
+#include <stdint.h>
+
+uint32_t circle_increment(uint32_t number, uint32_t max);
+
+#define MOD_INCREMENT(mod)  circle_increment(mod, MOD_NUMBER)
 typedef enum
 {
     MOD_NONE = 0,
@@ -11,6 +14,7 @@ typedef enum
     MOD_V,
     MOD_NUMBER
 }modificator_t;
+
 
 
 #endif

@@ -1,82 +1,75 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "gpio_module/gpio_module.h"
-#include "nrfx_rtc.h"
 #include "pwm_module/pwm_module.h"
 #include "button_module/button_module.h"
+#include "util_module/utils.h"
+#include "color_module/color_module.h"
+#include "nrf_delay.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
-#define DEVICE_ID_LIST {6, 5, 7, 9}
-#define DEVICE_COUNT_LED 4U
-#define DEVICE_DELAY_CICLE 100U
-#define DEVICE_DISCRETE_DELAY 1U
-#define DEVICE_DELAY_BLINK 500
-#define DEVICE_TIME 10U
-#define DEVICE_BUTTON_DELAY_MIN 1000
-#define DEVICE_BUTTON_DELAY_MAX 15000
+#define CONTROL_MASK 1
+#define RGB_MASK ((1 << 1) | (1 << 2) | (1 << 3))
+#define MAX_TIME_PWM_CICLE 20000
 
-static volatile bool        m_double_click          = false;
-static volatile bool        m_freeze                = false;
-static nrfx_rtc_t           m_rtc_timer             = NRFX_RTC_INSTANCE(0);
-static uint32_t             m_prev_button_time      = 0;
-static uint16_t const       m_max_time              = 20000;
-static uint16_t const       m_pwm_step              = 200;
-static volatile uint8_t     m_phase                 = 0;
-static const uint8_t        m_ids[DEVICE_COUNT_LED] = DEVICE_ID_LIST;
-static volatile uint8_t     m_repeat                = 0;
-static uint16_t             m_prev_value            = 0;
+static uint16_t         m_pwm_step  = 200;
+static volatile uint8_t m_phase     = 0;
+static modificator_t    m_state     = MOD_NONE;
+static rgb_t            m_rgb_color = {0, 0, 0};
+static pwm_ctx_t        m_pwm       = GET_DEFAULT_CTX(0);
+static pwm_ctx_t        m_pwm_rgb   = GET_DEFAULT_CTX(1);
 
- void init_log(void)
- {
+void init_log(void)
+{
     APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
     NRF_LOG_INFO("Starting up the test project with USB logging");
     NRF_LOG_DEFAULT_BACKENDS_INIT();
- }
- 
-void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
-{
-    if(m_double_click)
-    {
-        uint32_t t = nrfx_rtc_counter_get(&m_rtc_timer) - m_prev_button_time;
-        if(t > DEVICE_BUTTON_DELAY_MIN && t < DEVICE_BUTTON_DELAY_MAX)
-        {
-            m_freeze = !m_freeze;
-            m_double_click = false;
-            uint16_t temp = get_value_of_channel(m_phase >> 1);
-            set_value_of_channel(m_phase >> 1, m_prev_value);
-            m_prev_value = temp;
-            return;
-        }
-    }
-    m_prev_button_time = nrfx_rtc_counter_get(&m_rtc_timer);
-    m_double_click = true;
 }
 
-void rtc_handler(nrfx_rtc_int_type_t int_type)
-{}
-
- void init_rtc(void)
- {
-    nrfx_rtc_config_t conf = NRFX_RTC_DEFAULT_CONFIG;
-    nrfx_rtc_init(&m_rtc_timer, &conf, rtc_handler);
-    nrfx_rtc_enable(&m_rtc_timer);
- }
- static void pwn_custom_handler(nrfx_pwm_evt_type_t event_type)
+void double_button_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
 {
-    if(!m_freeze)
+    m_state = MOD_INCREMENT(m_state);
+    m_phase = 0;
+    switch (m_state)
+    {
+    case MOD_V:
+    {
+        m_pwm_step = 0;
+        set_value_of_channel(&m_pwm, m_phase, MAX_TIME_PWM_CICLE);
+        break;
+    }
+    case MOD_S:
+    {
+        m_pwm_step = MAX_TIME_PWM_CICLE / 4;
+        break;
+    }
+    case MOD_H:
+    {
+        m_pwm_step = 300;
+        break;
+    }
+    default:
+        set_value_of_channel(&m_pwm, m_phase, 0);
+        break;
+    }
+}
+
+static void pwn_control_led_handler(nrfx_pwm_evt_type_t event_type)
+{
+    if (m_state == MOD_NONE)
     {
         return;
     }
     if (event_type == NRFX_PWM_EVT_FINISHED)
     {
-        uint8_t channel    = m_phase >> 1;
-        bool    down       = m_phase & 1;
-        bool    next_phase = false;
-        uint16_t value = get_value_of_channel(channel);
+        uint8_t channel = m_phase >> 1;
+        bool down = m_phase & 1;
+        bool next_phase = false;
+        uint16_t value = get_value_of_channel(&m_pwm, channel);
         if (down)
         {
             value -= m_pwm_step;
@@ -85,42 +78,68 @@ void rtc_handler(nrfx_rtc_int_type_t int_type)
         else
         {
             value += m_pwm_step;
-            next_phase = value >= m_max_time;
+            next_phase = value >= MAX_TIME_PWM_CICLE;
         }
-        set_value_of_channel(channel, value); 
+        set_value_of_channel(&m_pwm, channel, value);
         if (next_phase)
         {
-            if(++m_repeat >= m_ids[channel] * 2)
-            { 
-                m_repeat = 0;
-                ++m_phase;
-            }
-            else
-            {
-                m_phase = down ? m_phase - 1 : m_phase + 1;
-            }
-            if (m_phase >= 2 * NRF_PWM_CHANNEL_COUNT)
-            {
-                m_phase = 0;
-            }
+            m_phase = down ? m_phase - 1 : m_phase + 1;
         }
     }
 }
 
+void rgb_on()
+{
+    uint32_t step   = MAX_TIME_PWM_CICLE / 255;
+    uint32_t r      = m_rgb_color.r * step;
+    uint32_t g      = m_rgb_color.g * step;
+    uint32_t b      = m_rgb_color.b * step;
+    set_value_of_channel(&m_pwm_rgb, 1, r);
+    set_value_of_channel(&m_pwm_rgb, 2, g);
+    set_value_of_channel(&m_pwm_rgb, 3, b);
+}
+
 int main(void)
 {
-    //nrfx_systick_init();
-    init_rtc();
+    hsv_t hsv_color = {0, 0, 0};
+    uint16_t h = 0, s = 0, v = 0;
+    
     init_log();
     init_leds();
     init_button();
-    init_pwn_module_for_leds(pwn_custom_handler, m_max_time);
-    init_gpiote_button(button_pressed_handler);
+    init_pwn_module_for_leds(&m_pwm, pwn_control_led_handler, MAX_TIME_PWM_CICLE, CONTROL_MASK);
+    init_pwn_module_for_leds(&m_pwm_rgb, NULL, MAX_TIME_PWM_CICLE, RGB_MASK);
+    init_gpiote_button(double_button_handler);
 
     while (true)
     {
-        __WFE();
-        __SEV();
-        __WFE();
-    }   
+        LOG_BACKEND_USB_PROCESS();
+        NRF_LOG_PROCESS();
+        if(m_state  != MOD_NONE && is_long_press())
+        {
+            NRF_LOG_INFO("State %d Color r=%d, g=%d, b=%d", m_state, m_rgb_color.r, m_rgb_color.g, m_rgb_color.b);
+            switch (m_state)
+            {
+            case MOD_H:
+                h = circle_increment(h, 1024);
+                hsv_color.h = h / 4;
+                hsv_to_rgb(&hsv_color, &m_rgb_color);
+                rgb_on();
+                break;
+            case MOD_S:
+                s = circle_increment(s, 1024);
+                hsv_color.s = s / 4;
+                hsv_to_rgb(&hsv_color, &m_rgb_color);
+                rgb_on();
+                break;
+            default:
+                v = circle_increment(v, 1024);
+                hsv_color.v = v / 4;
+                hsv_to_rgb(&hsv_color, &m_rgb_color);
+                rgb_on();
+                break;
+            }
+            nrf_delay_ms(1);
+        }
+    }
 }

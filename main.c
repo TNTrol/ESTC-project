@@ -6,6 +6,7 @@
 #include "util_module/utils.h"
 #include "color_module/color_module.h"
 #include "nrf_delay.h"
+#include "memory_module/memory_module.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -20,6 +21,7 @@ static uint16_t         m_pwm_step  = 200;
 static volatile uint8_t m_phase     = 0;
 static modificator_t    m_state     = MOD_NONE;
 static rgb_t            m_rgb_color = {0, 0, 0};
+static hsv_t            m_hsv_color = {0, 100, 100};
 static pwm_ctx_t        m_pwm       = GET_DEFAULT_CTX(0);
 static pwm_ctx_t        m_pwm_rgb   = GET_DEFAULT_CTX(1);
 
@@ -50,6 +52,7 @@ void double_button_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
     case MOD_H:
     {
         m_pwm_step = 300;
+        write_data_in_flash(&m_hsv_color);
         break;
     }
     default:
@@ -101,7 +104,6 @@ void rgb_on()
 
 int main(void)
 {
-    hsv_t hsv_color = {0, 0, 0};
     uint16_t h = 0, s = 0, v = 0;
     
     init_log();
@@ -110,6 +112,15 @@ int main(void)
     init_pwn_module_for_leds(&m_pwm, pwn_control_led_handler, MAX_TIME_PWM_CICLE, CONTROL_MASK);
     init_pwn_module_for_leds(&m_pwm_rgb, NULL, MAX_TIME_PWM_CICLE, RGB_MASK);
     init_gpiote_button(double_button_handler);
+
+
+    init_memory_module_32();
+    if (!read_data_in_flash( &m_hsv_color))
+    {
+        write_data_in_flash(&m_hsv_color);
+    }
+    hsv_to_rgb(&m_hsv_color, &m_rgb_color);
+    rgb_on();
 
     while (true)
     {
@@ -122,20 +133,20 @@ int main(void)
             {
             case MOD_H:
                 h = circle_increment(h, 1024);
-                hsv_color.h = h / 4;
-                hsv_to_rgb(&hsv_color, &m_rgb_color);
+                m_hsv_color.h = h / 4;
+                hsv_to_rgb(&m_hsv_color, &m_rgb_color);
                 rgb_on();
                 break;
             case MOD_S:
                 s = circle_increment(s, 1024);
-                hsv_color.s = s / 4;
-                hsv_to_rgb(&hsv_color, &m_rgb_color);
+                m_hsv_color.s = s / 4;
+                hsv_to_rgb(&m_hsv_color, &m_rgb_color);
                 rgb_on();
                 break;
             default:
                 v = circle_increment(v, 1024);
-                hsv_color.v = v / 4;
-                hsv_to_rgb(&hsv_color, &m_rgb_color);
+                m_hsv_color.v = v / 4;
+                hsv_to_rgb(&m_hsv_color, &m_rgb_color);
                 rgb_on();
                 break;
             }

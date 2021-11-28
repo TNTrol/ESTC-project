@@ -64,12 +64,14 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_systick.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_rtc.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_pwm.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_nvmc.c \
   $(PROJ_DIR)/main.c \
   $(PROJ_DIR)/gpio_module/gpio_module.c \
   $(PROJ_DIR)/pwm_module/pwm_module.c \
   $(PROJ_DIR)/button_module/button_module.c \
   $(PROJ_DIR)/color_module/color_module.c \
   $(PROJ_DIR)/util_module/utils.c \
+  $(PROJ_DIR)/memory_module/memory_module.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \

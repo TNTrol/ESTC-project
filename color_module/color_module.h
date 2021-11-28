@@ -4,7 +4,7 @@
 
 typedef struct 
 {
-    uint16_t h;
+    uint8_t h;
     uint8_t v;
     uint8_t s;
 }hsv_t;

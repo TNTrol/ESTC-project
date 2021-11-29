@@ -12,7 +12,7 @@
 #define DATA_MASK 0b11111111
 #define CONTROL_MASK_FLASH ((0b11111111)<< 24)
 
-void init_memory_module_32();
+void init_memory_module_32(void);
 
 bool read_data_in_flash(hsv_t* out_data);
 

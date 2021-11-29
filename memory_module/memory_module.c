@@ -23,7 +23,7 @@ uint32_t find_end(uint32_t address) // вынес для дебага
     return address;
 }
 
-void init_memory_module_32()
+void init_memory_module_32(void)
 {
     m_address = find_end(START_FIRST_PAGE_FLASH);
 }

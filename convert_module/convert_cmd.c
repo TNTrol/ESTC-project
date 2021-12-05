@@ -2,7 +2,7 @@
 
 #define SIZE_CONVERT 4
 
-static const char *m_hvs = "hsv", *m_rgb = "rgb";
+static const char *m_hvs = "HVS", *m_rgb = "RGB";
 static uint8_t m_numbers[SIZE_CONVERT - 1];
 static uint8_t m_word = 0;
 static uint8_t m_pos = 0;
@@ -25,11 +25,11 @@ static bool start_cmd(char c)
 {
     switch (c)
     {
-        case 'r':
+        case 'R':
             m_is_rgb = true;
             m_pos = 0;
             break;
-        case 'h':
+        case 'H':
             m_is_rgb = false;
             m_pos = 0;
             break;

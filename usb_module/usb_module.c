@@ -22,20 +22,16 @@ static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
     case APP_USBD_CDC_ACM_USER_EVT_PORT_OPEN:
     {
         ret_code_t ret;
-        //bsp_board_led_on(0);
         ret = app_usbd_cdc_acm_read(&usb_cdc_acm, m_rx_buffer, READ_SIZE);
         UNUSED_VARIABLE(ret);
         break;
     }
     case APP_USBD_CDC_ACM_USER_EVT_PORT_CLOSE:
     {
-        //bsp_board_led_off(0);
         break;
     }
     case APP_USBD_CDC_ACM_USER_EVT_TX_DONE:
     {
-        //NRF_LOG_INFO("tx done");
-        //bsp_board_led_invert(1);
         break;
     }
     case APP_USBD_CDC_ACM_USER_EVT_RX_DONE:
@@ -51,18 +47,11 @@ static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
             }
             else
             {
-                ret = app_usbd_cdc_acm_write(&usb_cdc_acm,
-                                             m_rx_buffer,
-                                             READ_SIZE);
-                
+                ret = app_usbd_cdc_acm_write(&usb_cdc_acm, m_rx_buffer, READ_SIZE);
             }
-        
             /* Fetch data until internal buffer is empty */
-            ret = app_usbd_cdc_acm_read(&usb_cdc_acm,
-                                        m_rx_buffer,
-                                        READ_SIZE);
+            ret = app_usbd_cdc_acm_read(&usb_cdc_acm, m_rx_buffer, READ_SIZE);
         } while (ret == NRF_SUCCESS);
-
         break;
     }
     default:

@@ -53,7 +53,6 @@ void hsv_to_rgb(const hsv_t *hsv, rgb_t *rgb)
 void rgb_to_hsv(const rgb_t *rgb, hsv_t* hsv)
 {
     unsigned char rgbMin, rgbMax;
-
     rgbMin = rgb->r < rgb->g ? (rgb->r < rgb->b ? rgb->r : rgb->b) : (rgb->g < rgb->b ? rgb->g : rgb->b);
     rgbMax = rgb->r > rgb->g ? (rgb->r > rgb->b ? rgb->r : rgb->b) : (rgb->g > rgb->b ? rgb->g : rgb->b);
 
@@ -73,9 +72,15 @@ void rgb_to_hsv(const rgb_t *rgb, hsv_t* hsv)
     }
 
     if (rgbMax == rgb->r)
+    {
         hsv->h = 0 + 43 * (rgb->g - rgb->b) / (rgbMax - rgbMin);
+    }
     else if (rgbMax == rgb->g)
+    {
         hsv->h = 85 + 43 * (rgb->b - rgb->r) / (rgbMax - rgbMin);
+    }    
     else
+    {
         hsv->h = 171 + 43 * (rgb->r - rgb->g) / (rgbMax - rgbMin);
+    }   
 }

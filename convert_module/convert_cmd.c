@@ -2,7 +2,7 @@
 
 #define SIZE_CONVERT 4
 
-static const char *hvs = "hsv", *rgb = "rgb";
+static const char *m_hvs = "hsv", *m_rgb = "rgb";
 static uint8_t m_numbers[SIZE_CONVERT - 1];
 static uint8_t m_word = 0;
 static uint8_t m_pos = 0;
@@ -47,9 +47,9 @@ static bool convert_command(char c)
     }
     if(m_is_rgb)
     {
-        return rgb[m_pos] == c || start_cmd(c);
+        return m_rgb[m_pos] == c || start_cmd(c);
     }
-    return hvs[m_pos] == c || start_cmd(c);
+    return m_hvs[m_pos] == c || start_cmd(c);
 }
 
 static inline void calculate()

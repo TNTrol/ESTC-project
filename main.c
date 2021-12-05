@@ -105,22 +105,24 @@ void rgb_on()
 
 static void func_convert_2(bool is_rgb, uint8_t data1, uint8_t data2, uint8_t data3)
 {
+    rgb_t rgb;
+    hsv_t hsv;
     if(is_rgb)
     {
-        rgb_t rgb = {.r = data1, .g = data2, .b = data3};
-        hsv_t hsv;
-        rgb_to_hsv(&rgb, &hsv);
-        m_hsv_color = hsv;
-        m_rgb_color = rgb;
+        rgb.r = data1;
+        rgb.g = data2;
+        rgb.b = data3;
+        rgb_to_hsv(&rgb, &hsv);       
     }
     else
     {
-        hsv_t hsv  = {.h = data1, .s = data2, .v = data3};
-        rgb_t rgb;
+        hsv.h = data1;
+        hsv.s = data2;
+        hsv.v = data3;
         hsv_to_rgb(&hsv, &rgb);
-        m_hsv_color = hsv;
-        m_rgb_color = rgb;
     }
+    m_hsv_color = hsv;
+    m_rgb_color = rgb;
     rgb_on();
 }
 

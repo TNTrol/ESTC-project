@@ -17,6 +17,6 @@ typedef struct
 }rgb_t;
 
 void hsv_to_rgb(const hsv_t* hvs, rgb_t *rgb);
-void rgb_to_hsv(const rgb_t *rgb, hsv_t* hvs);
+void rgb_to_hsv(const rgb_t *rgb, hsv_t* hsv);
 
 #endif

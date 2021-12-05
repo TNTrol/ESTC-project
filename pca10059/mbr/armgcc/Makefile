@@ -72,6 +72,8 @@ SRC_FILES += \
   $(PROJ_DIR)/color_module/color_module.c \
   $(PROJ_DIR)/util_module/utils.c \
   $(PROJ_DIR)/memory_module/memory_module.c \
+  $(PROJ_DIR)/usb_module/usb_module.c \
+  $(PROJ_DIR)/convert_char/convert_cmd.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \

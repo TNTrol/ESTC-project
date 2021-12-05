@@ -7,6 +7,7 @@
 #include "color_module/color_module.h"
 #include "nrf_delay.h"
 #include "memory_module/memory_module.h"
+#include "usb_module/usb_module.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -102,6 +103,27 @@ void rgb_on()
     set_value_of_channel(&m_pwm_rgb, 3, b);
 }
 
+static void func_convert_2(bool is_rgb, uint8_t data1, uint8_t data2, uint8_t data3)
+{
+    if(is_rgb)
+    {
+        rgb_t rgb = {.r = data1, .g = data2, .b = data3};
+        hsv_t hsv;
+        rgb_to_hsv(&rgb, &hsv);
+        m_hsv_color = hsv;
+        m_rgb_color = rgb;
+    }
+    else
+    {
+        hsv_t hsv  = {.h = data1, .s = data2, .v = data3};
+        rgb_t rgb;
+        hsv_to_rgb(&hsv, &rgb);
+        m_hsv_color = hsv;
+        m_rgb_color = rgb;
+    }
+    rgb_on();
+}
+
 int main(void)
 {
     uint16_t h = 0, s = 0, v = 0;
@@ -112,7 +134,7 @@ int main(void)
     init_pwn_module_for_leds(&m_pwm, pwn_control_led_handler, MAX_TIME_PWM_CICLE, CONTROL_MASK);
     init_pwn_module_for_leds(&m_pwm_rgb, NULL, MAX_TIME_PWM_CICLE, RGB_MASK);
     init_gpiote_button(double_button_handler);
-
+    init_usb_module(func_convert_2);
 
     init_memory_module_32();
     if (!read_data_in_flash( &m_hsv_color))
@@ -126,6 +148,7 @@ int main(void)
     {
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
+        app_usbd_event_queue_process();
         if(m_state  != MOD_NONE && is_long_press())
         {
             NRF_LOG_INFO("State %d Color r=%d, g=%d, b=%d", m_state, m_rgb_color.r, m_rgb_color.g, m_rgb_color.b);

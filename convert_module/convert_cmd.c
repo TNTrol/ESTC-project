@@ -1,13 +1,14 @@
 #include "convert_cmd.h"
+#include "stdlib.h"
 
 static word_t m_words[COUNT_WORD];
 static uint8_t m_word = 0;
 static bool m_prev_space = false;
 static uint8_t m_args[COUNT_WORD - 1];
 static state_parse_t m_state = SUCCESS;
-static command_t *m_commands;
+static command_t *m_commands = NULL;
 static uint8_t m_count_command = 0;
-static function_command m_callback = 0;
+static function_command m_callback = NULL;
 
 void reset_variable()
 {
@@ -21,8 +22,8 @@ bool parse_chars_to_uint8(const char *word, uint8_t size, uint8_t *out)
     uint8_t number = 0, temp = 0;
     for(uint8_t i = 0; i < size; ++i)
     {
-        temp = word[i] - 48;
-        if(temp > 255 - number * 10)
+        temp = word[i] - '0';
+        if(temp > UINT8_MAX - number * 10)
         {
             return false;
         }
@@ -44,41 +45,40 @@ uint8_t cmp_chars(const char *s1, const char *s2, uint8_t size)
     return 0;
 }
 
-bool convert_command1(const char *word, uint8_t *index)
+uint8_t convert_command(const char *word)
 {
     for (uint8_t i = 0; i < m_count_command; ++i)
     {
         if(!cmp_chars(m_commands[i].name, word, SIZE_WORD))
         {
-            *index = i;
-            return true;
+            return i;
         }
     }
-    return false;
+    return UINT8_MAX;
 }
 
 bool parse_chars_command()
 {
     if(m_state != SUCCESS)
     {
-        m_callback(m_state, 255, 0);
+        m_callback(m_state, 255, NULL);
         return false;
     }
     if(m_word == 0 && m_words[0].size == 0)
     {
         return false;
     }
-    uint8_t index = 0;
-    if(!convert_command1(m_words[0].arr, &index))
+    uint8_t index = convert_command(m_words[0].arr);
+    if(index == UINT8_MAX)
     {
         m_state = COMMAND_NOT_FOUND_ERROR;
-        m_callback(m_state, 255, 0);
+        m_callback(m_state, 255, NULL);
         return false;
     }
     if(m_word != m_commands[index].count_argument)
     {
         m_state = m_word > m_commands[index].count_argument ? UNEXPECTED_ARGUMENT_ERROR : MISSING_ARGUMENT_ERROR;
-        m_callback(m_state, 255, 0);
+        m_callback(m_state, 255, NULL);
         return false;
     }
     for(uint8_t i = 1; i <= m_commands[index].count_argument; ++i)

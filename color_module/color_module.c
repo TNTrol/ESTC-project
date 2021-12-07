@@ -1,4 +1,6 @@
 #include "color_module.h"
+#define min(a,b) ((a)<(b)?(a):(b))
+#define max(a,b) ((a)>(b)?(a):(b))
 
 void hsv_to_rgb(const hsv_t *hsv, rgb_t *rgb)
 {
@@ -52,11 +54,11 @@ void hsv_to_rgb(const hsv_t *hsv, rgb_t *rgb)
 
 void rgb_to_hsv(const rgb_t *rgb, hsv_t* hsv)
 {
-    unsigned char rgbMin, rgbMax;
-    rgbMin = rgb->r < rgb->g ? (rgb->r < rgb->b ? rgb->r : rgb->b) : (rgb->g < rgb->b ? rgb->g : rgb->b);
-    rgbMax = rgb->r > rgb->g ? (rgb->r > rgb->b ? rgb->r : rgb->b) : (rgb->g > rgb->b ? rgb->g : rgb->b);
+    unsigned char rgb_min, rgb_max;
+    rgb_max = max(max(rgb->r, rgb->g), rgb->b);
+    rgb_min = min(min(rgb->r, rgb->g), rgb->b);
 
-    hsv->v = rgbMax;
+    hsv->v = rgb_max;
     if (hsv->v == 0)
     {
         hsv->h = 0;
@@ -64,23 +66,23 @@ void rgb_to_hsv(const rgb_t *rgb, hsv_t* hsv)
         return;
     }
 
-    hsv->s = 255 * ((long)(rgbMax - rgbMin)) / hsv->v;
+    hsv->s = 255 * ((long)(rgb_max - rgb_min)) / hsv->v;
     if (hsv->s == 0)
     {
         hsv->h = 0;
         return;
     }
 
-    if (rgbMax == rgb->r)
+    if (rgb_max == rgb->r)
     {
-        hsv->h = 0 + 43 * (rgb->g - rgb->b) / (rgbMax - rgbMin);
+        hsv->h = 0 + 43 * (rgb->g - rgb->b) / (rgb_max - rgb_min);
     }
-    else if (rgbMax == rgb->g)
+    else if (rgb_max == rgb->g)
     {
-        hsv->h = 85 + 43 * (rgb->b - rgb->r) / (rgbMax - rgbMin);
+        hsv->h = 85 + 43 * (rgb->b - rgb->r) / (rgb_max - rgb_min);
     }    
     else
     {
-        hsv->h = 171 + 43 * (rgb->r - rgb->g) / (rgbMax - rgbMin);
+        hsv->h = 171 + 43 * (rgb->r - rgb->g) / (rgb_max - rgb_min);
     }   
 }

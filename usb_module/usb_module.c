@@ -1,7 +1,12 @@
 #include "usb_module.h"
+#include "../convert_module/convert_cmd.h"
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+#include "nrf_log_default_backends.h"
+#include "nrf_log_backend_usb.h"
 
 static func_usb_callback m_callback;
-static command_t m_commands[] = {{.name = "HSV\0", .count_argument = 3}, {.name = "RGB\0", .count_argument = 3}, {.name = "help\0", .count_argument = 0}};
+static command_t m_commands[] = {{.name = "HSV", .count_argument = 3}, {.name = "RGB", .count_argument = 3}, {.name = "help", .count_argument = 0}};
 
 static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
                            app_usbd_cdc_acm_user_event_t event);

@@ -9,7 +9,7 @@
 static volatile uint32_t m_address = 0;
 static uint8_t m_number_page = 0;
 
-uint32_t find_end(uint32_t address) // вынес для дебага
+uint32_t find_end(uint32_t address)
 {
     uint32_t temp = 0;
     temp = *((uint32_t*) address);

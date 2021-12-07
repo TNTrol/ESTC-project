@@ -1,120 +1,137 @@
 #include "convert_cmd.h"
 
-#define SIZE_CONVERT 4
-
-static const char *m_hvs = "HVS", *m_rgb = "RGB";
-static uint8_t m_numbers[SIZE_CONVERT - 1];
+static word_t m_words[COUNT_WORD];
 static uint8_t m_word = 0;
-static uint8_t m_pos = 0;
 static bool m_prev_space = false;
-static bool m_is_rgb = false;
-static func_convert m_callback;
+static uint8_t m_args[COUNT_WORD - 1];
+static state_parse_t m_state = SUCCESS;
+static command_t *m_commands;
+static uint8_t m_count_command = 0;
+static function_command m_callback = 0;
 
-void init_convert(func_convert callback)
-{
-    m_callback = callback;
-}
-
-static void reset()
+void reset_variable()
 {
     m_word = 0;
-    m_pos = 0;
+    m_words[0].size = 0;
+    m_state = SUCCESS;
 }
 
-static bool start_cmd(char c)
+bool parse_chars_to_uint8(const char *word, uint8_t size, uint8_t *out)
 {
-    switch (c)
+    uint8_t number = 0, temp = 0;
+    for(uint8_t i = 0; i < size; ++i)
     {
-        case 'R':
-            m_is_rgb = true;
-            m_pos = 0;
-            break;
-        case 'H':
-            m_is_rgb = false;
-            m_pos = 0;
-            break;
-        default:
+        temp = word[i] - 48;
+        if(temp > 255 - number * 10)
+        {
             return false;
+        }
+        number = 10 * number + temp;
     }
+    *out = number;
     return true;
 }
 
-static bool convert_command(char c)
+uint8_t cmp_chars(const char *s1, const char *s2, uint8_t size)
 {
-    if(m_pos == 0)
+    for (uint8_t i  = 0; i < size && s1[i] != '\0'; ++i)
     {
-        return start_cmd(c);
+        if(s1[i] != s2[i])
+        {
+            return 1;
+        }
     }
-    if(m_is_rgb)
-    {
-        return m_rgb[m_pos] == c || start_cmd(c);
-    }
-    return m_hvs[m_pos] == c || start_cmd(c);
+    return 0;
 }
 
-static inline void calculate()
+bool convert_command1(const char *word, uint8_t *index)
 {
-    m_callback(m_is_rgb, m_numbers[0], m_numbers[1], m_numbers[2]);
+    for (uint8_t i = 0; i < m_count_command; ++i)
+    {
+        if(!cmp_chars(m_commands[i].name, word, SIZE_WORD))
+        {
+            *index = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool parse_chars_command()
+{
+    if(m_state != SUCCESS)
+    {
+        m_callback(m_state, 255, 0);
+        return false;
+    }
+    if(m_word == 0 && m_words[0].size == 0)
+    {
+        return false;
+    }
+    uint8_t index = 0;
+    if(!convert_command1(m_words[0].arr, &index))
+    {
+        m_state = COMMAND_NOT_FOUND_ERROR;
+        m_callback(m_state, 255, 0);
+        return false;
+    }
+    if(m_word != m_commands[index].count_argument)
+    {
+        m_state = m_word > m_commands[index].count_argument ? UNEXPECTED_ARGUMENT_ERROR : MISSING_ARGUMENT_ERROR;
+        m_callback(m_state, 255, 0);
+        return false;
+    }
+    for(uint8_t i = 1; i <= m_commands[index].count_argument; ++i)
+    {
+        if(!parse_chars_to_uint8(m_words[i].arr, m_words[i].size, &m_args[i - 1]))
+        {
+            m_state = PARSE_ARGUMENT_ERROR;
+            break;
+        }
+    }
+    m_callback(m_state, index, m_state == SUCCESS ? m_args : 0);
+    return true;
 }
 
 void print_char(char c)
 {
     if(c == ' ')
     {
-        if(!m_prev_space && m_word == SIZE_CONVERT - 1)
-        {
-            calculate();
-            reset();
-        }
-        m_prev_space = m_word > 0 || (m_word == 0 && m_pos > 0);
+        m_prev_space = m_word > 0 || m_words[0].size > 0;
         return;
     }
-    if(c == '\n' || c == '\0')
+    if(c == '\n' || c == '\0' || c == '\r')
     {
-        if(m_word == SIZE_CONVERT - 1)
-        {
-            calculate();
-        }
-        reset();
+        parse_chars_command();
+        reset_variable();
         return;
     }
     if(m_prev_space)
     {
         m_prev_space = false;
-        m_numbers[m_word] = 0;
         m_word++;
-        m_pos = 0;
+        if(m_word < COUNT_WORD)
+        {
+            m_words[m_word].size = 0;
+        }
     }
-    if(m_word > 0 && 48 <= c && c < 58)
+    if(m_word >= COUNT_WORD)
     {
-        uint16_t a = m_numbers[m_word - 1] * 10;
-        if(a > 255 || 255 - a < c - 48)
-        {
-            reset();
-        }
-        else
-        {
-            m_numbers[m_word - 1] = a + (c - 48);
-            ++m_pos;
-        }
+        m_state = ARGUMENT_COUNT_ERROR;
+        return;
     }
-    else if(m_word > 0)
+    if(m_words[m_word].size >= SIZE_WORD)
     {
-        if(m_word == SIZE_CONVERT - 1 && m_pos > 0)
-        {
-            calculate();
-        }
-        reset();
+        m_state = SIZE_WORD_ERROR;
+        return;
     }
-    if(m_word == 0)
-    {
-        if(convert_command(c))
-        {
-            ++m_pos;
-        }
-        else
-        {
-            reset();
-        }
-    }
+    m_words[m_word].arr[m_words[m_word].size++] = c;
+}
+
+void init_parse(function_command method, uint8_t size, command_t *commands)
+{
+    m_callback = method;
+    m_count_command = size;
+    m_commands = commands;
+    reset_variable();
 }

@@ -50,7 +50,7 @@ bool parse_chars_command()
 {
     if(m_state != SUCCESS)
     {
-        m_callback(m_state, 255, NULL);
+        m_callback(m_state, UINT8_MAX, NULL);
         return false;
     }
     if(m_word == 0 && m_words[0].size == 0)
@@ -61,13 +61,13 @@ bool parse_chars_command()
     if(index == UINT8_MAX)
     {
         m_state = COMMAND_NOT_FOUND_ERROR;
-        m_callback(m_state, 255, NULL);
+        m_callback(m_state, UINT8_MAX, NULL);
         return false;
     }
     if(m_word != m_commands[index].count_argument)
     {
         m_state = m_word > m_commands[index].count_argument ? UNEXPECTED_ARGUMENT_ERROR : MISSING_ARGUMENT_ERROR;
-        m_callback(m_state, 255, NULL);
+        m_callback(m_state, UINT8_MAX, NULL);
         return false;
     }
     for(uint8_t i = 1; i <= m_commands[index].count_argument; ++i)
@@ -82,7 +82,7 @@ bool parse_chars_command()
     return true;
 }
 
-void print_char(char c)
+void push_char_to_command(char c)
 {
     if(c == ' ')
     {

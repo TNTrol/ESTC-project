@@ -31,6 +31,6 @@ typedef enum
 
 typedef void(*function_command)(state_parse_t state, uint8_t command_num, uint8_t *args);
 
-void print_char(char c);
+void push_char_to_command(char c);
 void init_parse(function_command method, uint8_t size, command_t *commands);
 #endif

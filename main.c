@@ -53,11 +53,11 @@ void double_button_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
     case MOD_H:
     {
         m_pwm_step = 300;
-        write_data_in_flash(&m_hsv_color);
         break;
     }
     default:
         set_value_of_channel(&m_pwm, m_phase, 0);
+        write_data_in_flash(&m_hsv_color);
         break;
     }
 }

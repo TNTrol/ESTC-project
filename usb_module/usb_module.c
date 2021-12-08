@@ -48,7 +48,7 @@ static void usb_ev_handler(app_usbd_class_inst_t const * p_inst,
         do
         {
             app_usbd_cdc_acm_rx_size(&usb_cdc_acm); //size_t size = 
-            print_char(m_rx_buffer[0]);
+            push_char_to_command(m_rx_buffer[0]);
             if (m_rx_buffer[0] == '\r' || m_rx_buffer[0] == '\n')
             {
                 ret = app_usbd_cdc_acm_write(&usb_cdc_acm, "\r\n", 2);

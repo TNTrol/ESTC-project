@@ -24,7 +24,7 @@ bool parse_chars_to_uint8(const char *word, uint8_t size, uint8_t *out)
     for(uint8_t i = 0; i < size; ++i)
     {
         temp = word[i] - '0';
-        if(temp > UINT8_MAX - number * 10)
+        if(temp > UINT8_MAX - number * 10 || word[i] > '9' || word[i] < '0')
         {
             return false;
         }

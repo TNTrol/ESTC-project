@@ -1,5 +1,6 @@
 #include "convert_cmd.h"
 #include "stdlib.h"
+#include "string.h"
 
 static word_t m_words[COUNT_WORD];
 static uint8_t m_word = 0;
@@ -33,23 +34,11 @@ bool parse_chars_to_uint8(const char *word, uint8_t size, uint8_t *out)
     return true;
 }
 
-uint8_t cmp_chars(const char *s1, const char *s2, uint8_t size)
-{
-    for (uint8_t i  = 0; i < size && s1[i] != '\0'; ++i)
-    {
-        if(s1[i] != s2[i])
-        {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-uint8_t convert_command(const char *word)
+uint8_t convert_command(const char *word, uint8_t size)
 {
     for (uint8_t i = 0; i < m_count_command; ++i)
     {
-        if(!cmp_chars(m_commands[i].name, word, SIZE_WORD))
+        if(strncmp(m_commands[i].name, word, size) == 0)
         {
             return i;
         }
@@ -68,7 +57,7 @@ bool parse_chars_command()
     {
         return false;
     }
-    uint8_t index = convert_command(m_words[0].arr);
+    uint8_t index = convert_command(m_words[0].arr, m_words[0].size);
     if(index == UINT8_MAX)
     {
         m_state = COMMAND_NOT_FOUND_ERROR;

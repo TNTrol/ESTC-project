@@ -15,9 +15,13 @@ typedef struct
 
 typedef struct 
 {
-    command_t *commands;
+    const command_t *commands;
     command_handler default_handler;
     uint8_t count_commands;
+    uint8_t count_word;
+    uint8_t position;
+    char line[COMMAND_BUFFER];
+    bool is_prev_space;
 }command_ctx_t;
 
 void push_char_to_command(char c);

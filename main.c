@@ -8,6 +8,7 @@
 #include "nrf_delay.h"
 #include "memory_module/memory_module.h"
 #include "usb_module/usb_module.h"
+#include "command_module/command.h"
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -18,13 +19,22 @@
 #define RGB_MASK ((1 << 1) | (1 << 2) | (1 << 3))
 #define MAX_TIME_PWM_CICLE 20000
 
-static uint16_t         m_pwm_step  = 200;
-static volatile uint8_t m_phase     = 0;
-static modificator_t    m_state     = MOD_NONE;
-static rgb_t            m_rgb_color = {0, 0, 0};
-static hsv_t            m_hsv_color = {0, 100, 100};
-static pwm_ctx_t        m_pwm       = GET_DEFAULT_CTX(0);
-static pwm_ctx_t        m_pwm_rgb   = GET_DEFAULT_CTX(1);
+static void handler_hsv_command(const char *line, uint8_t count_word);
+static void handler_rgb_command(const char *line, uint8_t count_word);
+static void handler_help_command(const char *line, uint8_t count_word);
+
+static uint16_t         m_pwm_step      = 200;
+static volatile uint8_t m_phase         = 0;
+static modificator_t    m_state         = MOD_NONE;
+static rgb_t            m_rgb_color     = {0, 0, 0};
+static hsv_t            m_hsv_color     = {0, 100, 100};
+static pwm_ctx_t        m_pwm           = GET_DEFAULT_CTX(0);
+static pwm_ctx_t        m_pwm_rgb       = GET_DEFAULT_CTX(1);
+static command_t        m_commands[]    = {
+        {.name = "HSV", .handler = handler_hsv_command},
+        {.name = "RGB", .handler = handler_rgb_command},
+        {.name = "help", .handler = handler_help_command}
+};
 
 void init_log(void)
 {
@@ -92,6 +102,25 @@ static void pwn_control_led_handler(nrfx_pwm_evt_type_t event_type)
     }
 }
 
+static bool parse_chars_to_numbers(const char *line, uint8_t *args)
+{
+    const char *start = line;
+    char *end = NULL;
+    long number = 0;
+    for(uint8_t i = 0; i < 3; ++i)
+    {
+        number = strtol(start, &end, 10);
+        if(end == start || *end != '\0' || number < 0 || number > UINT8_MAX)
+        {
+            return false;
+        }
+        start = end + 1;
+        args[i] = number;
+    }
+   
+    return true;
+}
+
 void rgb_on()
 {
     uint32_t step   = MAX_TIME_PWM_CICLE / 255;
@@ -103,27 +132,63 @@ void rgb_on()
     set_value_of_channel(&m_pwm_rgb, 3, b);
 }
 
-static void func_convert_2(bool is_rgb, uint8_t data1, uint8_t data2, uint8_t data3)
+static void func_convert_to_color(bool is_rgb, const char *line, uint8_t count_word)
 {
+    if(count_word != 3)
+    {
+        usb_write_msg("\r\nUnexpected count arguments\n\r", 30);
+        return;
+    }
+    uint8_t args[3];
+    if(!parse_chars_to_numbers(line, args))
+    {
+        usb_write_msg("\r\nIncorect argument\n\r", 21);
+        return;
+    }
     rgb_t rgb;
     hsv_t hsv;
     if(is_rgb)
     {
-        rgb.r = data1;
-        rgb.g = data2;
-        rgb.b = data3;
+        rgb.r = args[0];
+        rgb.g = args[1];
+        rgb.b = args[2];
         rgb_to_hsv(&rgb, &hsv);       
     }
     else
     {
-        hsv.h = data1;
-        hsv.s = data2;
-        hsv.v = data3;
+        hsv.h = args[0];
+        hsv.s = args[1];
+        hsv.v = args[2];
         hsv_to_rgb(&hsv, &rgb);
     }
     m_hsv_color = hsv;
     m_rgb_color = rgb;
     rgb_on();
+}
+
+static void handler_rgb_command(const char *line, uint8_t count_word)
+{
+    func_convert_to_color(true, line, count_word);
+}
+
+static void handler_hsv_command(const char *line, uint8_t count_word)
+{
+    func_convert_to_color(false, line, count_word);
+}
+
+static void handler_help_command(const char *line, uint8_t count_word)
+{
+    usb_write_msg("\r\nCommands: RGB, HSV, help\n\r", 28);
+}
+
+static void handler_usb_read(const char *msg, const uint8_t size)
+{
+    push_char_to_command(msg[0]);
+}
+
+static void handler_unknown_command(const char *line, uint8_t count_word)
+{
+    usb_write_msg("\r\nNot found command\n\r", 21);
 }
 
 int main(void)
@@ -136,7 +201,8 @@ int main(void)
     init_pwn_module_for_leds(&m_pwm, pwn_control_led_handler, MAX_TIME_PWM_CICLE, CONTROL_MASK);
     init_pwn_module_for_leds(&m_pwm_rgb, NULL, MAX_TIME_PWM_CICLE, RGB_MASK);
     init_gpiote_button(double_button_handler);
-    init_usb_module(func_convert_2);
+    init_usb_module(handler_usb_read);
+    init_parse(3, m_commands, handler_unknown_command);
 
     init_memory_module_32();
     if (!read_data_in_flash( &m_hsv_color))

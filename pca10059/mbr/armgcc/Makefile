@@ -73,7 +73,7 @@ SRC_FILES += \
   $(PROJ_DIR)/util_module/utils.c \
   $(PROJ_DIR)/memory_module/memory_module.c \
   $(PROJ_DIR)/usb_module/usb_module.c \
-  $(PROJ_DIR)/convert_module/convert_cmd.c \
+  $(PROJ_DIR)/command_module/command.c \
 
 # Include folders common to all targets
 INC_FOLDERS += \

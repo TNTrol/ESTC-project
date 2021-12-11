@@ -1,6 +1,6 @@
 #include "color_module.h"
-#define min(a,b) ((a)<(b)?(a):(b))
-#define max(a,b) ((a)>(b)?(a):(b))
+#define MIN(a,b) ((a)<(b)?(a):(b))
+#define MAX(a,b) ((a)>(b)?(a):(b))
 
 void hsv_to_rgb(const hsv_t *hsv, rgb_t *rgb)
 {
@@ -55,8 +55,8 @@ void hsv_to_rgb(const hsv_t *hsv, rgb_t *rgb)
 void rgb_to_hsv(const rgb_t *rgb, hsv_t* hsv)
 {
     unsigned char rgb_min, rgb_max;
-    rgb_max = max(max(rgb->r, rgb->g), rgb->b);
-    rgb_min = min(min(rgb->r, rgb->g), rgb->b);
+    rgb_max = MAX(MAX(rgb->r, rgb->g), rgb->b);
+    rgb_min = MIN(MIN(rgb->r, rgb->g), rgb->b);
 
     hsv->v = rgb_max;
     if (hsv->v == 0)

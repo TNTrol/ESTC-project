@@ -20,7 +20,7 @@ uint8_t convert_command(const char *word, uint8_t size)
             return i;
         }
     }
-    return UINT8_MAX;
+    return COMMAND_NOT_FOUND;
 }
 
 void parse_chars_command()
@@ -31,7 +31,7 @@ void parse_chars_command()
     }
     uint8_t len = strlen(m_command_ctx.line);
     uint8_t index_cmd = convert_command(m_command_ctx.line, len);
-    if(index_cmd < UINT8_MAX)
+    if(index_cmd != COMMAND_NOT_FOUND)
     {
         m_command_ctx.commands[index_cmd].handler(m_command_ctx.line + len + (m_command_ctx.count_word > 0), m_command_ctx.count_word);
         return;

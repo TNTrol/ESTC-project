@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #define COMMAND_BUFFER 30
+#define COMMAND_NOT_FOUND UINT8_MAX
 
 typedef void(*command_handler)(const char *, uint8_t count_word);
 

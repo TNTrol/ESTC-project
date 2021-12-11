@@ -18,10 +18,13 @@
 #define CONTROL_MASK 1
 #define RGB_MASK ((1 << 1) | (1 << 2) | (1 << 3))
 #define MAX_TIME_PWM_CICLE 20000
+#define MAX_VALUE_COUNTER (1024 * 8)
+#define MAX_VALUE_STEP_COUNTER (16)
 
 static void handler_hsv_command(const char *line, uint8_t count_word);
 static void handler_rgb_command(const char *line, uint8_t count_word);
 static void handler_help_command(const char *line, uint8_t count_word);
+static void handler_save_command(const char *line, uint8_t count_word);
 
 static uint16_t         m_pwm_step      = 200;
 static volatile uint8_t m_phase         = 0;
@@ -33,7 +36,8 @@ static pwm_ctx_t        m_pwm_rgb       = GET_DEFAULT_CTX(1);
 static command_t        m_commands[]    = {
         {.name = "HSV", .handler = handler_hsv_command},
         {.name = "RGB", .handler = handler_rgb_command},
-        {.name = "help", .handler = handler_help_command}
+        {.name = "help", .handler = handler_help_command},
+        {.name = "save", .handler = handler_save_command}
 };
 
 void init_log(void)
@@ -139,8 +143,8 @@ static void func_convert_to_color(bool is_rgb, const char *line, uint8_t count_w
         usb_write_msg("\r\nUnexpected count arguments\n\r", 30);
         return;
     }
-    uint8_t args[3];
-    if(!parse_chars_to_numbers(line, args))
+    color_t color;
+    if(!parse_chars_to_numbers(line, color.components))
     {
         usb_write_msg("\r\nIncorect argument\n\r", 21);
         return;
@@ -149,16 +153,12 @@ static void func_convert_to_color(bool is_rgb, const char *line, uint8_t count_w
     hsv_t hsv;
     if(is_rgb)
     {
-        rgb.r = args[0];
-        rgb.g = args[1];
-        rgb.b = args[2];
+        rgb = color.rgb;
         rgb_to_hsv(&rgb, &hsv);       
     }
     else
     {
-        hsv.h = args[0];
-        hsv.s = args[1];
-        hsv.v = args[2];
+        hsv = color.hsv;
         hsv_to_rgb(&hsv, &rgb);
     }
     m_hsv_color = hsv;
@@ -178,7 +178,26 @@ static void handler_hsv_command(const char *line, uint8_t count_word)
 
 static void handler_help_command(const char *line, uint8_t count_word)
 {
-    usb_write_msg("\r\nCommands: RGB, HSV, help\n\r", 28);
+    if(count_word == 0)
+    {
+        usb_write_msg("\r\nCommands: RGB, HSV, help, save\n\r", 34);
+    }
+    else
+    {
+        usb_write_msg("\r\nUnexpected count arguments\n\r", 30);
+    }
+}
+
+static void handler_save_command(const char *line, uint8_t count_word)
+{
+    if(count_word == 0)
+    {
+        write_data_in_flash(&m_hsv_color);
+    }
+    else
+    {
+        usb_write_msg("\r\nUnexpected count arguments\n\r", 30);
+    }
 }
 
 static void handler_usb_read(const char *msg, const uint8_t size)
@@ -202,7 +221,7 @@ int main(void)
     init_pwn_module_for_leds(&m_pwm_rgb, NULL, MAX_TIME_PWM_CICLE, RGB_MASK);
     init_gpiote_button(double_button_handler);
     init_usb_module(handler_usb_read);
-    init_parse(3, m_commands, handler_unknown_command);
+    init_parse(sizeof(m_commands) / sizeof(command_t), m_commands, handler_unknown_command);
 
     init_memory_module_32();
     if (!read_data_in_flash( &m_hsv_color))
@@ -217,26 +236,26 @@ int main(void)
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
         app_usbd_event_queue_process();
-        if(m_state  != MOD_NONE && is_long_press())
+        if(m_state != MOD_NONE && is_long_press())
         {
             NRF_LOG_INFO("State %d Color r=%d, g=%d, b=%d", m_state, m_rgb_color.r, m_rgb_color.g, m_rgb_color.b);
             switch (m_state)
             {
             case MOD_H:
-                h = circle_increment(h, 1024);
-                m_hsv_color.h = h / 4;
+                h = circle_increment(h, MAX_VALUE_COUNTER);
+                m_hsv_color.h = h / MAX_VALUE_STEP_COUNTER;
                 hsv_to_rgb(&m_hsv_color, &m_rgb_color);
                 rgb_on();
                 break;
             case MOD_S:
-                s = circle_increment(s, 1024);
-                m_hsv_color.s = s / 4;
+                s = circle_increment(s, MAX_VALUE_COUNTER);
+                m_hsv_color.s = s / MAX_VALUE_STEP_COUNTER;
                 hsv_to_rgb(&m_hsv_color, &m_rgb_color);
                 rgb_on();
                 break;
             default:
-                v = circle_increment(v, 1024);
-                m_hsv_color.v = v / 4;
+                v = circle_increment(v, MAX_VALUE_COUNTER);
+                m_hsv_color.v = v / MAX_VALUE_STEP_COUNTER;
                 hsv_to_rgb(&m_hsv_color, &m_rgb_color);
                 rgb_on();
                 break;

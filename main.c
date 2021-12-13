@@ -147,13 +147,13 @@ static void func_convert_to_color(bool is_rgb, const char *line, uint8_t count_w
 {
     if(count_word != 3)
     {
-        usb_write_msg("\r\nUnexpected count arguments\n\r", 30);
+        usb_write_msg("\r\nUnexpected count arguments\n\r");
         return;
     }
     color_t color;
     if(!parse_chars_to_numbers(line, 3, color.components))
     {
-        usb_write_msg("\r\nIncorect argument\n\r", 21);
+        usb_write_msg("\r\nIncorect argument\n\r");
         return;
     }
     rgb_t rgb;
@@ -187,11 +187,11 @@ static void handler_help_command(const char *line, uint8_t count_word)
 {
     if(count_word == 0)
     {
-        usb_write_msg("\r\nCommands: RGB, HSV, help, save\n\r", 34);
+        usb_write_msg("\r\nCommands: RGB, HSV, help, save\n\r");
     }
     else
     {
-        usb_write_msg("\r\nUnexpected count arguments\n\r", 30);
+        usb_write_msg("\r\nUnexpected count arguments\n\r");
     }
 }
 
@@ -203,7 +203,7 @@ static void handler_save_command(const char *line, uint8_t count_word)
     }
     else
     {
-        usb_write_msg("\r\nUnexpected count arguments\n\r", 30);
+        usb_write_msg("\r\nUnexpected count arguments\n\r");
     }
 }
 
@@ -214,7 +214,7 @@ static void handler_usb_read(const char *msg, const uint8_t size)
 
 static void handler_unknown_command(const char *line, uint8_t count_word)
 {
-    usb_write_msg("\r\nNot found command\n\r", 21);
+    usb_write_msg("\r\nNot found command\n\r");
 }
 #endif
 

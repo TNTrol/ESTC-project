@@ -3,6 +3,7 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
+#include "string.h"
 
 static func_usb_callback m_callback;
 
@@ -73,7 +74,7 @@ void init_usb_module(func_usb_callback callback)
     app_usbd_class_append(class_cdc_acm);
 }
 
-void usb_write_msg(const char *msg, const uint8_t size)
+void usb_write_msg(const char *msg)
 {
-    app_usbd_cdc_acm_write(&usb_cdc_acm, msg, size);
+    app_usbd_cdc_acm_write(&usb_cdc_acm, msg, strlen(msg));
 }

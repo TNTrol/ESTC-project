@@ -18,6 +18,6 @@
 typedef void(*func_usb_callback)(const char *chars, const uint8_t size);
 
 void init_usb_module(func_usb_callback callback);
-void usb_write_msg(const char *msg, const uint8_t size);
+void usb_write_msg(const char *msg);
 
 #endif

@@ -7,8 +7,10 @@
 #include "color_module/color_module.h"
 #include "nrf_delay.h"
 #include "memory_module/memory_module.h"
+#if ESTC_USB_CLI_ENABLED
 #include "usb_module/usb_module.h"
 #include "command_module/command.h"
+#endif
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
@@ -21,10 +23,19 @@
 #define MAX_VALUE_COUNTER (1024 * 8)
 #define MAX_VALUE_STEP_COUNTER (16)
 
+#if ESTC_USB_CLI_ENABLED
 static void handler_hsv_command(const char *line, uint8_t count_word);
 static void handler_rgb_command(const char *line, uint8_t count_word);
 static void handler_help_command(const char *line, uint8_t count_word);
 static void handler_save_command(const char *line, uint8_t count_word);
+
+static command_t        m_commands[]    = {
+        {.name = "HSV", .handler = handler_hsv_command},
+        {.name = "RGB", .handler = handler_rgb_command},
+        {.name = "help", .handler = handler_help_command},
+        {.name = "save", .handler = handler_save_command}
+};
+#endif
 
 static uint16_t         m_pwm_step      = 200;
 static volatile uint8_t m_phase         = 0;
@@ -33,12 +44,7 @@ static rgb_t            m_rgb_color     = {0, 0, 0};
 static hsv_t            m_hsv_color     = {0, 100, 100};
 static pwm_ctx_t        m_pwm           = GET_DEFAULT_CTX(0);
 static pwm_ctx_t        m_pwm_rgb       = GET_DEFAULT_CTX(1);
-static command_t        m_commands[]    = {
-        {.name = "HSV", .handler = handler_hsv_command},
-        {.name = "RGB", .handler = handler_rgb_command},
-        {.name = "help", .handler = handler_help_command},
-        {.name = "save", .handler = handler_save_command}
-};
+
 
 void init_log(void)
 {
@@ -106,6 +112,18 @@ static void pwn_control_led_handler(nrfx_pwm_evt_type_t event_type)
     }
 }
 
+void rgb_on()
+{
+    uint32_t step   = MAX_TIME_PWM_CICLE / 255;
+    uint32_t r      = m_rgb_color.r * step;
+    uint32_t g      = m_rgb_color.g * step;
+    uint32_t b      = m_rgb_color.b * step;
+    set_value_of_channel(&m_pwm_rgb, 1, r);
+    set_value_of_channel(&m_pwm_rgb, 2, g);
+    set_value_of_channel(&m_pwm_rgb, 3, b);
+}
+
+#if ESTC_USB_CLI_ENABLED
 static bool parse_chars_to_numbers(const char *line, uint8_t *args)
 {
     const char *start = line;
@@ -123,17 +141,6 @@ static bool parse_chars_to_numbers(const char *line, uint8_t *args)
     }
    
     return true;
-}
-
-void rgb_on()
-{
-    uint32_t step   = MAX_TIME_PWM_CICLE / 255;
-    uint32_t r      = m_rgb_color.r * step;
-    uint32_t g      = m_rgb_color.g * step;
-    uint32_t b      = m_rgb_color.b * step;
-    set_value_of_channel(&m_pwm_rgb, 1, r);
-    set_value_of_channel(&m_pwm_rgb, 2, g);
-    set_value_of_channel(&m_pwm_rgb, 3, b);
 }
 
 static void func_convert_to_color(bool is_rgb, const char *line, uint8_t count_word)
@@ -209,6 +216,7 @@ static void handler_unknown_command(const char *line, uint8_t count_word)
 {
     usb_write_msg("\r\nNot found command\n\r", 21);
 }
+#endif
 
 int main(void)
 {
@@ -220,8 +228,10 @@ int main(void)
     init_pwn_module_for_leds(&m_pwm, pwn_control_led_handler, MAX_TIME_PWM_CICLE, CONTROL_MASK);
     init_pwn_module_for_leds(&m_pwm_rgb, NULL, MAX_TIME_PWM_CICLE, RGB_MASK);
     init_gpiote_button(double_button_handler);
+    #if ESTC_USB_CLI_ENABLED
     init_usb_module(handler_usb_read);
     init_parse(sizeof(m_commands) / sizeof(command_t), m_commands, handler_unknown_command);
+    #endif
 
     init_memory_module_32();
     if (!read_data_in_flash( &m_hsv_color))
@@ -235,7 +245,9 @@ int main(void)
     {
         LOG_BACKEND_USB_PROCESS();
         NRF_LOG_PROCESS();
+        #if ESTC_USB_CLI_ENABLED
         app_usbd_event_queue_process();
+        #endif
         if(m_state != MOD_NONE && is_long_press())
         {
             NRF_LOG_INFO("State %d Color r=%d, g=%d, b=%d", m_state, m_rgb_color.r, m_rgb_color.g, m_rgb_color.b);

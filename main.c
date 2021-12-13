@@ -124,12 +124,12 @@ void rgb_on()
 }
 
 #if ESTC_USB_CLI_ENABLED
-static bool parse_chars_to_numbers(const char *line, uint8_t *args)
+static bool parse_chars_to_numbers(const char *line, const uint8_t size, uint8_t *args)
 {
     const char *start = line;
     char *end = NULL;
     long number = 0;
-    for(uint8_t i = 0; i < 3; ++i)
+    for(uint8_t i = 0; i < size; ++i)
     {
         number = strtol(start, &end, 10);
         if(end == start || *end != '\0' || number < 0 || number > UINT8_MAX)
@@ -151,7 +151,7 @@ static void func_convert_to_color(bool is_rgb, const char *line, uint8_t count_w
         return;
     }
     color_t color;
-    if(!parse_chars_to_numbers(line, color.components))
+    if(!parse_chars_to_numbers(line, 3, color.components))
     {
         usb_write_msg("\r\nIncorect argument\n\r", 21);
         return;
@@ -230,7 +230,7 @@ int main(void)
     init_gpiote_button(double_button_handler);
     #if ESTC_USB_CLI_ENABLED
     init_usb_module(handler_usb_read);
-    init_parse(sizeof(m_commands) / sizeof(command_t), m_commands, handler_unknown_command);
+    init_parse(ARRAY_SIZE(m_commands), m_commands, handler_unknown_command);
     #endif
 
     init_memory_module_32();

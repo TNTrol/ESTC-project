@@ -15,6 +15,4 @@ typedef enum
     MOD_NUMBER
 }modificator_t;
 
-
-
 #endif

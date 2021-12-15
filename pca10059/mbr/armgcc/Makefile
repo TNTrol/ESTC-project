@@ -6,6 +6,8 @@ SDK_ROOT := ../../../../ESTC-NSDK
 PROJ_DIR := ../../..
 DFU_PORT ?= /dev/ttyACM0
 
+ESTC_USB_CLI_ENABLED=0
+
 $(OUTPUT_DIRECTORY)/nrf52840_xxaa.out: \
   LINKER_SCRIPT  := blinky_gcc_nrf52.ld
 
@@ -64,12 +66,19 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_systick.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_rtc.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_pwm.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_nvmc.c \
   $(PROJ_DIR)/main.c \
   $(PROJ_DIR)/gpio_module/gpio_module.c \
   $(PROJ_DIR)/pwm_module/pwm_module.c \
   $(PROJ_DIR)/button_module/button_module.c \
   $(PROJ_DIR)/color_module/color_module.c \
   $(PROJ_DIR)/util_module/utils.c \
+  $(PROJ_DIR)/memory_module/memory_module.c \
+  $(PROJ_DIR)/command_module/command.c
+
+  ifeq ($(ESTC_USB_CLI_ENABLED), 1)
+     SRC_FILES += $(PROJ_DIR)/usb_module/usb_module.c
+  endif
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -162,6 +171,7 @@ CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # keep every function in a separate section, this allows linker to discard unused ones
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
 CFLAGS += -fno-builtin -fshort-enums
+CFLAGS += -DESTC_USB_CLI_ENABLED=${ESTC_USB_CLI_ENABLED}
 
 # C++ flags common to all targets
 CXXFLAGS += $(OPT)

@@ -82,7 +82,7 @@
 
 #include "estc_service.h"
 
-#define DEVICE_NAME                     "ESTC-SVC"                              /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "Semyon"                                /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME               "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
 #define APP_ADV_INTERVAL                300                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 
@@ -110,8 +110,13 @@ static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
 {
     {BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE},
-    // TODO: 5. Add ESTC service UUID to the table
+    {ESTC_SERVICE_UUID, BLE_UUID_TYPE_BLE},
+    {ESTC_GATT_CHAR_1_UUID, BLE_UUID_TYPE_BLE},
+    {ESTC_GATT_CHAR_2_UUID, BLE_UUID_TYPE_BLE},
+    // TODO: 7. Add ESTC service UUID to the table
 };
+
+static ble_uuid_t m_adv_srv_uuids = {ESTC_SERVICE_UUID, BLE_UUID_TYPE_VENDOR_BEGIN};
 
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
@@ -455,16 +460,20 @@ static void advertising_init(void)
 
     memset(&init, 0, sizeof(init));
 
-    init.advdata.name_type               = BLE_ADVDATA_FULL_NAME;
+    init.advdata.name_type               = BLE_ADVDATA_SHORT_NAME;
+    init.advdata.include_appearance      = true;
     init.advdata.flags                   = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-
-    // TODO: 6. Consider moving the device characteristics to the Scan Response if necessary
     init.advdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
     init.advdata.uuids_complete.p_uuids  = m_adv_uuids;
+    init.advdata.short_name_len = 6;
 
     init.config.ble_adv_fast_enabled  = true;
     init.config.ble_adv_fast_interval = APP_ADV_INTERVAL;
     init.config.ble_adv_fast_timeout  = APP_ADV_DURATION;
+
+    init.srdata.name_type = BLE_ADVDATA_FULL_NAME;
+    init.srdata.uuids_complete.uuid_cnt = 1;
+    init.srdata.uuids_complete.p_uuids = &m_adv_srv_uuids;
 
     init.evt_handler = on_adv_evt;
 
@@ -552,7 +561,7 @@ int main(void)
     conn_params_init();
 
     // Start execution.
-    NRF_LOG_INFO("ESTC GATT service example started");
+    NRF_LOG_INFO("ESTC GATT server example started");
     application_timers_start();
 
     advertising_start();

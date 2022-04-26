@@ -46,8 +46,8 @@
 #define ESTC_GATT_CHAR_1_UUID  0x1234
 #define ESTC_GATT_CHAR_2_UUID  0x1101
 
-#define ESTC_USER_CHAR_1_DESCR "First characteristic"
-#define ESTC_OTHER_CHAR_2_DESCR "Second characteristic"
+#define ESTC_USER_CHAR_DESCR "First characteristic"
+#define ESTC_OTHER_CHAR_DESCR "Second characteristic"
 
 
 typedef struct

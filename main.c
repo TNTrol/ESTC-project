@@ -1,52 +1,52 @@
-/**
- * Copyright (c) 2014 - 2021, Nordic Semiconductor ASA
- *
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice, this
- *    list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form, except as embedded into a Nordic
- *    Semiconductor ASA integrated circuit in a product or a software update for
- *    such product, must reproduce the above copyright notice, this list of
- *    conditions and the following disclaimer in the documentation and/or other
- *    materials provided with the distribution.
- *
- * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
- *    contributors may be used to endorse or promote products derived from this
- *    software without specific prior written permission.
- *
- * 4. This software, with or without modification, must only be used with a
- *    Nordic Semiconductor ASA integrated circuit.
- *
- * 5. Any software provided in binary form under this license must not be reverse
- *    engineered, decompiled, modified and/or disassembled.
- *
- * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
- * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- */
-/** @file
- *
- * @defgroup estc_gatt main.c
- * @{
- * @ingroup estc_templates
- * @brief ESTC-GATT project file.
- *
- * This file contains a template for creating a new BLE application with GATT services. It has
- * the code necessary to advertise, get a connection, restart advertising on disconnect.
- */
+    /**
+     * Copyright (c) 2014 - 2021, Nordic Semiconductor ASA
+     *
+     * All rights reserved.
+     *
+     * Redistribution and use in source and binary forms, with or without modification,
+     * are permitted provided that the following conditions are met:
+     *
+     * 1. Redistributions of source code must retain the above copyright notice, this
+     *    list of conditions and the following disclaimer.
+     *
+     * 2. Redistributions in binary form, except as embedded into a Nordic
+     *    Semiconductor ASA integrated circuit in a product or a software update for
+     *    such product, must reproduce the above copyright notice, this list of
+     *    conditions and the following disclaimer in the documentation and/or other
+     *    materials provided with the distribution.
+     *
+     * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
+     *    contributors may be used to endorse or promote products derived from this
+     *    software without specific prior written permission.
+     *
+     * 4. This software, with or without modification, must only be used with a
+     *    Nordic Semiconductor ASA integrated circuit.
+     *
+     * 5. Any software provided in binary form under this license must not be reverse
+     *    engineered, decompiled, modified and/or disassembled.
+     *
+     * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
+     * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+     * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
+     * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
+     * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+     * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+     * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+     * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+     * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+     * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+     *
+     */
+    /** @file
+     *
+     * @defgroup estc_gatt main.c
+     * @{
+     * @ingroup estc_templates
+     * @brief ESTC-GATT project file.
+     *
+     * This file contains a template for creating a new BLE application with GATT services. It has
+     * the code necessary to advertise, get a connection, restart advertising on disconnect.
+     */
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -83,7 +83,7 @@
 #include "estc_service.h"
 
 #define DEVICE_NAME                     "Semyon"                                /**< Name of device. Will be included in the advertising data. */
-#define MANUFACTURER_NAME               "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
+#define MANUFACTURER_NAME               "Nordic"                                /**< Manufacturer. Will be passed to Device Information Service. */
 #define APP_ADV_INTERVAL                300                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 
 #define APP_ADV_DURATION                18000                                   /**< The advertising duration (180 seconds) in units of 10 milliseconds. */
@@ -101,61 +101,76 @@
 
 #define DEAD_BEEF                       0xDEADBEEF                              /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
+#define APP_INDICATION_TIMER_TIMEOUT    500
+#define APP_NOTIFICATION_TIMER_TIMEOUT  300
+  
+
+
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);                                                         /**< Context for the Queued Write module.*/
 BLE_ADVERTISING_DEF(m_advertising);                                             /**< Advertising module instance. */
+APP_TIMER_DEF(m_indication_timer_id);                                   /**< Indicationing characteristic timer id */
+APP_TIMER_DEF(m_notification_timer_id);                                       /**< Notifying characteristic timer id */
+
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
 
+static ble_uuid_t m_adv_srv_uuids = {ESTC_SERVICE_UUID, BLE_UUID_TYPE_VENDOR_BEGIN};
+
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
-{
+    {
     {BLE_UUID_DEVICE_INFORMATION_SERVICE, BLE_UUID_TYPE_BLE},
     {ESTC_SERVICE_UUID, BLE_UUID_TYPE_BLE},
     {ESTC_GATT_CHAR_1_UUID, BLE_UUID_TYPE_BLE},
-    {ESTC_GATT_CHAR_2_UUID, BLE_UUID_TYPE_BLE},
-    // TODO: 7. Add ESTC service UUID to the table
-};
-
-static ble_uuid_t m_adv_srv_uuids = {ESTC_SERVICE_UUID, BLE_UUID_TYPE_VENDOR_BEGIN};
+    {ESTC_GATT_CHAR_3_UUID, BLE_UUID_TYPE_BLE}
+    };
 
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
+static uint16_t notification_value = ESTC_NOTIFY_CHAR_DEF_VAL;
+static uint16_t indication_value = ESTC_INDICATION_CHAR_DEF_VAL;
+
 static void advertising_start(void);
+static void indicating_char_timeout_handler(void *p_context);
+static void notifying_char_timeout_handler(void *p_context);
 
 
-/**@brief Callback function for asserts in the SoftDevice.
- *
- * @details This function will be called in case of an assert in the SoftDevice.
- *
- * @warning This handler is an example only and does not fit a final product. You need to analyze
- *          how your product is supposed to react in case of Assert.
- * @warning On assert from the SoftDevice, the system can only recover on reset.
- *
- * @param[in] line_num   Line number of the failing ASSERT call.
- * @param[in] file_name  File name of the failing ASSERT call.
- */
+    /**@brief Callback function for asserts in the SoftDevice.
+     *
+     * @details This function will be called in case of an assert in the SoftDevice.
+     *
+     * @warning This handler is an example only and does not fit a final product. You need to analyze
+     *          how your product is supposed to react in case of Assert.
+     * @warning On assert from the SoftDevice, the system can only recover on reset.
+     *
+     * @param[in] line_num   Line number of the failing ASSERT call.
+     * @param[in] file_name  File name of the failing ASSERT call.
+     */
 void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
 {
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
-/**@brief Function for the Timer initialization.
- *
- * @details Initializes the timer module. This creates and starts application timers.
- */
+    /**@brief Function for the Timer initialization.
+     *
+     * @details Initializes the timer module. This creates and starts application timers.
+     */
 static void timers_init(void)
 {
     // Initialize timer module.
     ret_code_t err_code = app_timer_init();
     APP_ERROR_CHECK(err_code);
+    app_timer_create(&m_notification_timer_id, APP_TIMER_MODE_REPEATED, notifying_char_timeout_handler);
+    app_timer_create(&m_indication_timer_id, APP_TIMER_MODE_REPEATED, indicating_char_timeout_handler);
+
 }
 
 
-/**@brief Function for the GAP initialization.
- *
- * @details This function sets up all the necessary GAP (Generic Access Profile) parameters of the
- *          device including the device name, appearance, and the preferred connection parameters.
- */
+    /**@brief Function for the GAP initialization.
+     *
+     * @details This function sets up all the necessary GAP (Generic Access Profile) parameters of the
+     *          device including the device name, appearance, and the preferred connection parameters.
+     */
 static void gap_params_init(void)
 {
     ret_code_t              err_code;
@@ -165,12 +180,12 @@ static void gap_params_init(void)
     BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
 
     err_code = sd_ble_gap_device_name_set(&sec_mode,
-                                          (const uint8_t *)DEVICE_NAME,
-                                          strlen(DEVICE_NAME));
+                                            (const uint8_t *)DEVICE_NAME,
+                                            strlen(DEVICE_NAME));
     APP_ERROR_CHECK(err_code);
 
-	err_code = sd_ble_gap_appearance_set(BLE_APPEARANCE_UNKNOWN);
-	APP_ERROR_CHECK(err_code);
+    err_code = sd_ble_gap_appearance_set(BLE_APPEARANCE_UNKNOWN);
+    APP_ERROR_CHECK(err_code);
 
     memset(&gap_conn_params, 0, sizeof(gap_conn_params));
 
@@ -184,8 +199,8 @@ static void gap_params_init(void)
 }
 
 
-/**@brief Function for initializing the GATT module.
- */
+    /**@brief Function for initializing the GATT module.
+     */
 static void gatt_init(void)
 {
     ret_code_t err_code = nrf_ble_gatt_init(&m_gatt, NULL);
@@ -193,20 +208,40 @@ static void gatt_init(void)
 }
 
 
-/**@brief Function for handling Queued Write Module errors.
- *
- * @details A pointer to this function will be passed to each service which may need to inform the
- *          application about an error.
- *
- * @param[in]   nrf_error   Error code containing information about what went wrong.
- */
+static void notifying_char_timeout_handler(void *p_context)
+{
+    notification_value += 0xFF;
+    estc_update_characteristic_value(m_estc_service.connection_handle, 
+                                    m_estc_service.notification_characteristic.value_handle,
+                                    BLE_GATT_HVX_NOTIFICATION,
+                                    (uint8_t*)&notification_value,
+                                    sizeof(notification_value));
+}
+
+static void indicating_char_timeout_handler(void *p_context)
+{
+    indication_value += 0xBEE;
+    estc_update_characteristic_value(m_estc_service.connection_handle, 
+                                    m_estc_service.indication_characteristic.value_handle,
+                                    BLE_GATT_HVX_INDICATION,
+                                    (uint8_t*)&indication_value,
+                                    sizeof(indication_value));
+}
+
+    /**@brief Function for handling Queued Write Module errors.
+     *
+     * @details A pointer to this function will be passed to each service which may need to inform the
+     *          application about an error.
+     *
+     * @param[in]   nrf_error   Error code containing information about what went wrong.
+     */
 static void nrf_qwr_error_handler(uint32_t nrf_error)
 {
     APP_ERROR_HANDLER(nrf_error);
 }
 
-/**@brief Function for initializing services that will be used by the application.
- */
+    /**@brief Function for initializing services that will be used by the application.
+     */
 static void services_init(void)
 {
     ret_code_t         err_code;
@@ -223,16 +258,16 @@ static void services_init(void)
 }
 
 
-/**@brief Function for handling the Connection Parameters Module.
- *
- * @details This function will be called for all events in the Connection Parameters Module which
- *          are passed to the application.
- *          @note All this function does is to disconnect. This could have been done by simply
- *                setting the disconnect_on_fail config parameter, but instead we use the event
- *                handler mechanism to demonstrate its use.
- *
- * @param[in] p_evt  Event received from the Connection Parameters Module.
- */
+    /**@brief Function for handling the Connection Parameters Module.
+     *
+     * @details This function will be called for all events in the Connection Parameters Module which
+     *          are passed to the application.
+     *          @note All this function does is to disconnect. This could have been done by simply
+     *                setting the disconnect_on_fail config parameter, but instead we use the event
+     *                handler mechanism to demonstrate its use.
+     *
+     * @param[in] p_evt  Event received from the Connection Parameters Module.
+     */
 static void on_conn_params_evt(ble_conn_params_evt_t * p_evt)
 {
     ret_code_t err_code;
@@ -245,18 +280,18 @@ static void on_conn_params_evt(ble_conn_params_evt_t * p_evt)
 }
 
 
-/**@brief Function for handling a Connection Parameters error.
- *
- * @param[in] nrf_error  Error code containing information about what went wrong.
- */
+    /**@brief Function for handling a Connection Parameters error.
+     *
+     * @param[in] nrf_error  Error code containing information about what went wrong.
+     */
 static void conn_params_error_handler(uint32_t nrf_error)
 {
     APP_ERROR_HANDLER(nrf_error);
 }
 
 
-/**@brief Function for initializing the Connection Parameters module.
- */
+    /**@brief Function for initializing the Connection Parameters module.
+     */
 static void conn_params_init(void)
 {
     ret_code_t             err_code;
@@ -278,17 +313,17 @@ static void conn_params_init(void)
 }
 
 
-/**@brief Function for starting timers.
- */
+    /**@brief Function for starting timers.
+     */
 static void application_timers_start(void)
 {
 }
 
 
-/**@brief Function for putting the chip into sleep mode.
- *
- * @note This function will not return.
- */
+    /**@brief Function for putting the chip into sleep mode.
+     *
+     * @note This function will not return.
+     */
 static void sleep_mode_enter(void)
 {
     ret_code_t err_code;
@@ -296,22 +331,22 @@ static void sleep_mode_enter(void)
     err_code = bsp_indication_set(BSP_INDICATE_IDLE);
     APP_ERROR_CHECK(err_code);
 
-    // Prepare wakeup buttons.
+        // Prepare wakeup buttons.
     err_code = bsp_btn_ble_sleep_mode_prepare();
     APP_ERROR_CHECK(err_code);
 
-    // Go to system-off mode (this function will not return; wakeup will cause a reset).
+        // Go to system-off mode (this function will not return; wakeup will cause a reset).
     err_code = sd_power_system_off();
     APP_ERROR_CHECK(err_code);
 }
 
 
-/**@brief Function for handling advertising events.
- *
- * @details This function will be called for advertising events which are passed to the application.
- *
- * @param[in] ble_adv_evt  Advertising event.
- */
+    /**@brief Function for handling advertising events.
+     *
+     * @details This function will be called for advertising events which are passed to the application.
+     *
+     * @param[in] ble_adv_evt  Advertising event.
+     */
 static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 {
     ret_code_t err_code;
@@ -335,11 +370,11 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 }
 
 
-/**@brief Function for handling BLE events.
- *
- * @param[in]   p_ble_evt   Bluetooth stack event.
- * @param[in]   p_context   Unused.
- */
+    /**@brief Function for handling BLE events.
+     *
+     * @param[in]   p_ble_evt   Bluetooth stack event.
+     * @param[in]   p_context   Unused.
+     */
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 {
     ret_code_t err_code = NRF_SUCCESS;
@@ -349,6 +384,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected (conn_handle: %d)", p_ble_evt->evt.gap_evt.conn_handle);
             // LED indication will be changed when advertising starts.
+            app_timer_stop(m_notification_timer_id);
+            app_timer_stop(m_indication_timer_id);
             break;
 
         case BLE_GAP_EVT_CONNECTED:
@@ -360,6 +397,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
+
+            app_timer_start(m_notification_timer_id, APP_NOTIFICATION_TIMER_TIMEOUT, NULL);
+            app_timer_start(m_indication_timer_id, APP_INDICATION_TIMER_TIMEOUT, NULL);
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
@@ -378,15 +418,17 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             // Disconnect on GATT Client timeout event.
             NRF_LOG_DEBUG("GATT Client Timeout (conn_handle: %d)", p_ble_evt->evt.gattc_evt.conn_handle);
             err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gattc_evt.conn_handle,
-                                             BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+                                                BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
             APP_ERROR_CHECK(err_code);
+            app_timer_stop(m_notification_timer_id);
+            app_timer_stop(m_indication_timer_id);
             break;
 
         case BLE_GATTS_EVT_TIMEOUT:
             // Disconnect on GATT Server timeout event.
             NRF_LOG_DEBUG("GATT Server Timeout (conn_handle: %d)", p_ble_evt->evt.gatts_evt.conn_handle);
             err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gatts_evt.conn_handle,
-                                             BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+                                                BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
             APP_ERROR_CHECK(err_code);
             break;
 
@@ -397,10 +439,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 }
 
 
-/**@brief Function for initializing the BLE stack.
- *
- * @details Initializes the SoftDevice and the BLE event interrupt.
- */
+    /**@brief Function for initializing the BLE stack.
+     *
+     * @details Initializes the SoftDevice and the BLE event interrupt.
+     */
 static void ble_stack_init(void)
 {
     ret_code_t err_code;
@@ -423,10 +465,10 @@ static void ble_stack_init(void)
 }
 
 
-/**@brief Function for handling events from the BSP module.
- *
- * @param[in]   event   Event generated when button is pressed.
- */
+    /**@brief Function for handling events from the BSP module.
+     *
+     * @param[in]   event   Event generated when button is pressed.
+     */
 static void bsp_event_handler(bsp_event_t event)
 {
     ret_code_t err_code;
@@ -439,7 +481,7 @@ static void bsp_event_handler(bsp_event_t event)
 
         case BSP_EVENT_DISCONNECT:
             err_code = sd_ble_gap_disconnect(m_conn_handle,
-                                             BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+                                                BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
             if (err_code != NRF_ERROR_INVALID_STATE)
             {
                 APP_ERROR_CHECK(err_code);
@@ -451,43 +493,42 @@ static void bsp_event_handler(bsp_event_t event)
 }
 
 
-/**@brief Function for initializing the Advertising functionality.
- */
+    /**@brief Function for initializing the Advertising functionality.
+     */
 static void advertising_init(void)
 {
-    ret_code_t             err_code;
-    ble_advertising_init_t init;
+        ret_code_t             err_code;
+        ble_advertising_init_t init;
 
-    memset(&init, 0, sizeof(init));
+        memset(&init, 0, sizeof(init));
 
-    init.advdata.name_type               = BLE_ADVDATA_SHORT_NAME;
-    init.advdata.include_appearance      = true;
-    init.advdata.flags                   = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-    init.advdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
-    init.advdata.uuids_complete.p_uuids  = m_adv_uuids;
-    init.advdata.short_name_len = 6;
+        init.advdata.name_type               = BLE_ADVDATA_FULL_NAME;
+        
+        init.advdata.include_appearance      = true;
+        init.advdata.flags                   = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+        init.advdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids)/ sizeof(m_adv_uuids[0]);
+        init.advdata.uuids_complete.p_uuids  = m_adv_uuids;
 
-    init.config.ble_adv_fast_enabled  = true;
-    init.config.ble_adv_fast_interval = APP_ADV_INTERVAL;
-    init.config.ble_adv_fast_timeout  = APP_ADV_DURATION;
+        init.config.ble_adv_fast_enabled     = true;
+        init.config.ble_adv_fast_interval    = APP_ADV_INTERVAL;
+        init.config.ble_adv_fast_timeout     = APP_ADV_DURATION;
 
-    init.srdata.name_type = BLE_ADVDATA_FULL_NAME;
-    init.srdata.uuids_complete.uuid_cnt = 1;
-    init.srdata.uuids_complete.p_uuids = &m_adv_srv_uuids;
+        init.srdata.name_type               = BLE_ADVDATA_FULL_NAME;
+        init.srdata.uuids_complete.uuid_cnt = 1;
+        init.srdata.uuids_complete.p_uuids  = &m_adv_srv_uuids;
+        init.evt_handler = on_adv_evt;
 
-    init.evt_handler = on_adv_evt;
+        err_code = ble_advertising_init(&m_advertising, &init);
+        APP_ERROR_CHECK(err_code);
 
-    err_code = ble_advertising_init(&m_advertising, &init);
-    APP_ERROR_CHECK(err_code);
-
-    ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
+        ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
 }
 
 
-/**@brief Function for initializing buttons and leds.
- *
- * @param[out] p_erase_bonds  Will be true if the clear bonding button was pressed to wake the application up.
- */
+    /**@brief Function for initializing buttons and leds.
+     *
+     * @param[out] p_erase_bonds  Will be true if the clear bonding button was pressed to wake the application up.
+     */
 static void buttons_leds_init(void)
 {
     ret_code_t err_code;
@@ -500,8 +541,8 @@ static void buttons_leds_init(void)
 }
 
 
-/**@brief Function for initializing the nrf log module.
- */
+    /**@brief Function for initializing the nrf log module.
+     */
 static void log_init(void)
 {
     ret_code_t err_code = NRF_LOG_INIT(NULL);
@@ -511,8 +552,8 @@ static void log_init(void)
 }
 
 
-/**@brief Function for initializing power management.
- */
+    /**@brief Function for initializing power management.
+     */
 static void power_management_init(void)
 {
     ret_code_t err_code;
@@ -521,22 +562,22 @@ static void power_management_init(void)
 }
 
 
-/**@brief Function for handling the idle state (main loop).
- *
- * @details If there is no pending log operation, then sleep until next the next event occurs.
- */
+    /**@brief Function for handling the idle state (main loop).
+     *
+     * @details If there is no pending log operation, then sleep until next the next event occurs.
+     */
 static void idle_state_handle(void)
 {
     if (NRF_LOG_PROCESS() == false)
     {
         nrf_pwr_mgmt_run();
     }
-	LOG_BACKEND_USB_PROCESS();
+    LOG_BACKEND_USB_PROCESS();
 }
 
 
-/**@brief Function for starting advertising.
- */
+    /**@brief Function for starting advertising.
+     */
 static void advertising_start(void)
 {
     ret_code_t err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
@@ -544,8 +585,8 @@ static void advertising_start(void)
 }
 
 
-/**@brief Function for application main entry.
- */
+    /**@brief Function for application main entry.
+     */
 int main(void)
 {
     // Initialize.
@@ -574,6 +615,6 @@ int main(void)
 }
 
 
-/**
- * @}
- */
+    /**
+     * @}
+     */

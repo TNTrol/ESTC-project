@@ -45,9 +45,14 @@
 
 #define ESTC_GATT_CHAR_1_UUID  0x1234
 #define ESTC_GATT_CHAR_2_UUID  0x1101
+#define ESTC_GATT_CHAR_3_UUID  0x5301
 
-#define ESTC_USER_CHAR_DESCR "First characteristic"
-#define ESTC_OTHER_CHAR_DESCR "Second characteristic"
+#define ESTC_USER_CHAR_DESCR "User characteristic"
+#define ESTC_OTHER_CHAR_DESCR "Other characteristic"
+#define ESTC_NOTIFICATION_CHAR_DESCR "Notification characteristic"
+
+#define ESTC_NOTIFY_CHAR_DEF_VAL      0xBEEU
+#define ESTC_INDICATION_CHAR_DEF_VAL  0xFEED
 
 
 typedef struct
@@ -55,13 +60,15 @@ typedef struct
     uint16_t                    service_handle;
     uint16_t                    connection_handle;
     ble_gatts_char_handles_t    first_characteristic;
-    ble_gatts_char_handles_t    second_characteristic;
+    ble_gatts_char_handles_t    indication_characteristic;
+    ble_gatts_char_handles_t    notification_characteristic;
 } ble_estc_service_t;
 
 ret_code_t estc_ble_service_init(ble_estc_service_t *service);
 
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
 
-void estc_update_characteristic_1_value(ble_estc_service_t *service, int32_t *value);
+void estc_update_characteristic_1_value(ble_estc_service_t *service, uint8_t *value, uint16_t len);
+void estc_update_characteristic_value(uint16_t connection, uint16_t value_handle, uint8_t type, uint8_t *value, uint16_t len);
 
 #endif /* ESTC_SERVICE_H__ */

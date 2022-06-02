@@ -57,7 +57,10 @@
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
+#include "estc_timer.h"
 #include "estc_ble.h"
+
+static uint8_t color[3];
 
 void log_init()
 {
@@ -69,36 +72,65 @@ void log_init()
 
 static void stop()
 {
-    NRF_LOG_DEBUG("Disconnected");
+    NRF_LOG_INFO("Disconnected");
+    timer_stop_indification();
+    timer_stop_notification();
 }
 
 static void start()
 {
-    NRF_LOG_DEBUG("Connected");
+    NRF_LOG_INFO("Connected");
+    timer_start_notification();
+    timer_start_indification();
 }
 
-static void recieve(uint8_t *data, uint16_t len)
+static void recieve_notification(uint8_t *data, uint16_t len)
 {
-    NRF_LOG_DEBUG("Recieve: %d\n", len);
+    NRF_LOG_INFO("Recieve: %d\n", len);
     for(uint8_t i = 0; i < len; ++i)
     {
-        NRF_LOG_DEBUG("data%d: %d\n", i, data[i]);
+        NRF_LOG_INFO("data%d: %d\n", i, data[i]);
     }
 }
 
-// void context_ble_init()
-// {
-//     ble_context context = {.recieve = recieve, .start_callback = start, .stop_callback = stop};
-//     ble_init(&context);
-// }
+static void recieve_indification(uint8_t *data, uint16_t len)
+{
+    NRF_LOG_INFO("Recieve: %d\n", len);
+    for(uint8_t i = 0; i < len; ++i)
+    {
+        NRF_LOG_INFO("data%d: %d\n", i, data[i]);
+    }
+}
 
-    /**@brief Function for application main entry.
-     */
+static uint32_t notification_value = 0xFAA;
+static uint32_t indication_value = 0xFFAAA;
+
+static void notifying_char_timeout_handler(void *p_context)
+{
+    
+    notification_value += notification_value * 7 % 0xFFFF;
+    send_data_notification((uint8_t*)&notification_value, 3);
+}
+
+static void indicating_char_timeout_handler(void *p_context)
+{   
+    indication_value = indication_value * 7 % 0xFFFFF;
+    send_data_indication((uint8_t*)&indication_value, 3);
+}
+
+
 int main(void)
 {
     // Initialize.
     log_init();
-    ble_context context = {.recieve = recieve, .start_callback = start, .stop_callback = stop};
+    timer_init(notifying_char_timeout_handler, indicating_char_timeout_handler);
+    ble_context context = {.recieve_notify = recieve_notification, 
+                            .start_callback = start, 
+                            .stop_callback = stop,
+                            .recieve_inditify =recieve_indification,
+                            .notification_value = {.value =color, .size = 3},
+                            .indication_value = {.value = color, .size=3},
+                            .defult_value = {.value = NULL, .size = 0}};
     ble_init(&context);
 
     // Enter main loop.

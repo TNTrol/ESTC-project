@@ -64,7 +64,14 @@ typedef struct
     ble_gatts_char_handles_t    notification_characteristic;
 } ble_estc_service_t;
 
-ret_code_t estc_ble_service_init(ble_estc_service_t *service);
+typedef struct 
+{
+    uint8_t *value;
+    uint16_t size;
+}value_char;
+
+
+ret_code_t estc_ble_service_init(ble_estc_service_t *service, value_char values[3]);
 
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
 

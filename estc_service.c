@@ -42,7 +42,7 @@
 #define INDICATE_PROP 0b100
 #define NOTIFY_PROP 0b1000
 
-static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service);
+static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, value_char values[3]);
 
 static ret_code_t estc_ble_add_uni_characteristic(uint16_t service_handle, 
                                                     const uint8_t *description, 
@@ -53,7 +53,8 @@ static ret_code_t estc_ble_add_uni_characteristic(uint16_t service_handle,
                                                     uint8_t *data,
                                                     uint16_t data_size);
 
-ret_code_t estc_ble_service_init(ble_estc_service_t *service)
+
+ret_code_t estc_ble_service_init(ble_estc_service_t *service, value_char values[3])
 {
     ret_code_t      error_code = NRF_SUCCESS;
     ble_uuid128_t   base_uuid = {ESTC_BASE_UUID};
@@ -64,10 +65,10 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service)
     error_code = sd_ble_gatts_service_add(BLE_GATTS_SRVC_TYPE_PRIMARY, &ble_uuid, &service->service_handle);
     APP_ERROR_CHECK(error_code);
 
-    return estc_ble_add_characteristics(service);
+    return estc_ble_add_characteristics(service, values);
 }
 
-static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
+static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, value_char values[3])
 {
     ret_code_t      error_code = NRF_SUCCESS;
     const uint8_t   desc[] = ESTC_USER_CHAR_DESCR;
@@ -76,15 +77,12 @@ static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service)
     ble_uuid_t      ble_uuid = {.uuid = ESTC_GATT_CHAR_1_UUID, .type = BLE_UUID_TYPE_BLE};
     ble_uuid_t      ble_uuid2 = {.uuid = ESTC_GATT_CHAR_2_UUID, .type = BLE_UUID_TYPE_BLE};
     ble_uuid_t      ble_uuid3 = {.uuid = ESTC_GATT_CHAR_3_UUID, .type = BLE_UUID_TYPE_BLE};
-    uint16_t        data_indication = ESTC_INDICATION_CHAR_DEF_VAL;
-    uint16_t        data_notification = ESTC_NOTIFY_CHAR_DEF_VAL;
 
-
-    error_code = estc_ble_add_uni_characteristic(service->service_handle, desc, sizeof(desc), READ_PROP | WRITE_PROP, &ble_uuid, &service->first_characteristic, NULL, 0);
+    error_code = estc_ble_add_uni_characteristic(service->service_handle, desc, sizeof(desc), READ_PROP, &ble_uuid, &service->first_characteristic, values[0].value, values[0].size);
     APP_ERROR_CHECK(error_code);
-    error_code = estc_ble_add_uni_characteristic(service->service_handle, desc2, sizeof(desc2),  READ_PROP | INDICATE_PROP, &ble_uuid2, &service->indication_characteristic, (uint8_t *)&data_indication, sizeof(data_indication));
+    error_code = estc_ble_add_uni_characteristic(service->service_handle, desc2, sizeof(desc2),  READ_PROP | INDICATE_PROP, &ble_uuid2, &service->indication_characteristic, values[1].value, values[1].size);
     APP_ERROR_CHECK(error_code);
-    return estc_ble_add_uni_characteristic(service->service_handle, desc3, sizeof(desc3), WRITE_PROP | READ_PROP | NOTIFY_PROP, &ble_uuid3, &service->notification_characteristic, (uint8_t *)&data_notification, sizeof(data_notification));
+    return estc_ble_add_uni_characteristic(service->service_handle, desc3, sizeof(desc3), WRITE_PROP | READ_PROP | NOTIFY_PROP, &ble_uuid3, &service->notification_characteristic, values[2].value, values[2].size);
 }
 
 static ret_code_t estc_ble_add_uni_characteristic(uint16_t service_handle, 
@@ -139,20 +137,6 @@ static ret_code_t estc_ble_add_uni_characteristic(uint16_t service_handle,
     return sd_ble_gatts_characteristic_add(service_handle, &char_md, &attr_char_value, p_handles);
 }
 
-void estc_update_characteristic_1_value(ble_estc_service_t *service, uint8_t *value, uint16_t len)
-{
-
-    ble_gatts_hvx_params_t hvx_params;
-    memset(&hvx_params, 0, sizeof(hvx_params));
-    hvx_params.handle = service->notification_characteristic.value_handle;
-    hvx_params.type   = BLE_GATT_HVX_NOTIFICATION;
-    hvx_params.offset = 0;
-    hvx_params.p_len  = &len;
-    hvx_params.p_data = (uint8_t*)value;
-
-    sd_ble_gatts_hvx(service->connection_handle, &hvx_params);
-}
-
 void estc_update_characteristic_value(uint16_t connection, uint16_t value_handle, uint8_t type, uint8_t *value, uint16_t len)
 {
     ble_gatts_hvx_params_t hvx_params;
@@ -160,7 +144,7 @@ void estc_update_characteristic_value(uint16_t connection, uint16_t value_handle
     hvx_params.type   = type;
     hvx_params.offset = 0;
     hvx_params.p_len  = &len;
-    hvx_params.p_data = (uint8_t*)value;
+    hvx_params.p_data = value;
 
     sd_ble_gatts_hvx(connection, &hvx_params);
 }

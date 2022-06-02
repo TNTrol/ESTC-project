@@ -1,8 +1,4 @@
 
-
-
-
-
 #include "nordic_common.h"
 #include "nrf.h"
 #include "app_error.h"
@@ -33,7 +29,7 @@
 
 #include "estc_ble.h"
 
-#include "estc_service.h"
+
 
                                /**< Manufacturer. Will be passed to Device Information Service. */
 #define APP_ADV_INTERVAL                300                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
@@ -61,8 +57,6 @@
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);                                                         /**< Context for the Queued Write module.*/
 BLE_ADVERTISING_DEF(m_advertising);                                             /**< Advertising module instance. */
-APP_TIMER_DEF(m_indication_timer_id);                                   /**< Indicationing characteristic timer id */
-APP_TIMER_DEF(m_notification_timer_id);                                       /**< Notifying characteristic timer id */
 
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
@@ -79,15 +73,9 @@ static ble_uuid_t m_adv_uuids[] =                                               
 
 ble_estc_service_t m_estc_service; /**< ESTC example BLE service */
 
-static uint16_t notification_value = ESTC_NOTIFY_CHAR_DEF_VAL;
-static uint16_t indication_value = ESTC_INDICATION_CHAR_DEF_VAL;
-
 static ble_context m_ble_context = {0};
 
 static void advertising_start(void);
-static void indicating_char_timeout_handler(void *p_context);
-static void notifying_char_timeout_handler(void *p_context);
-
 
     /**@brief Callback function for asserts in the SoftDevice.
      *
@@ -109,15 +97,6 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
      *
      * @details Initializes the timer module. This creates and starts application timers.
      */
-static void timers_init(void)
-{
-    // Initialize timer module.
-    ret_code_t err_code = app_timer_init();
-    APP_ERROR_CHECK(err_code);
-    app_timer_create(&m_notification_timer_id, APP_TIMER_MODE_REPEATED, notifying_char_timeout_handler);
-    app_timer_create(&m_indication_timer_id, APP_TIMER_MODE_REPEATED, indicating_char_timeout_handler);
-
-}
 
 
     /**@brief Function for the GAP initialization.
@@ -162,25 +141,7 @@ static void gatt_init(void)
 }
 
 
-static void notifying_char_timeout_handler(void *p_context)
-{
-    notification_value += 0xFF;
-    estc_update_characteristic_value(m_estc_service.connection_handle, 
-                                    m_estc_service.notification_characteristic.value_handle,
-                                    BLE_GATT_HVX_NOTIFICATION,
-                                    (uint8_t*)&notification_value,
-                                    sizeof(notification_value));
-}
 
-static void indicating_char_timeout_handler(void *p_context)
-{
-    indication_value += 0xBEE;
-    estc_update_characteristic_value(m_estc_service.connection_handle, 
-                                    m_estc_service.indication_characteristic.value_handle,
-                                    BLE_GATT_HVX_INDICATION,
-                                    (uint8_t*)&indication_value,
-                                    sizeof(indication_value));
-}
 
     /**@brief Function for handling Queued Write Module errors.
      *
@@ -207,7 +168,8 @@ static void services_init(void)
     err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
     APP_ERROR_CHECK(err_code);
 
-    err_code = estc_ble_service_init(&m_estc_service);
+    value_char arr[] = {m_ble_context.defult_value, m_ble_context.indication_value, m_ble_context.notification_value};
+    err_code = estc_ble_service_init(&m_estc_service, arr);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -270,18 +232,18 @@ static void application_timers_start(void)
      */
 static void sleep_mode_enter(void)
 {
-    ret_code_t err_code;
+    // ret_code_t err_code;
 
-    err_code = bsp_indication_set(BSP_INDICATE_IDLE);
-    APP_ERROR_CHECK(err_code);
+    // err_code = bsp_indication_set(BSP_INDICATE_IDLE);
+    // APP_ERROR_CHECK(err_code);
 
-        // Prepare wakeup buttons.
-    err_code = bsp_btn_ble_sleep_mode_prepare();
-    APP_ERROR_CHECK(err_code);
+    //     // Prepare wakeup buttons.
+    // err_code = bsp_btn_ble_sleep_mode_prepare();
+    // APP_ERROR_CHECK(err_code);
 
-        // Go to system-off mode (this function will not return; wakeup will cause a reset).
-    err_code = sd_power_system_off();
-    APP_ERROR_CHECK(err_code);
+    //     // Go to system-off mode (this function will not return; wakeup will cause a reset).
+    // err_code = sd_power_system_off();
+    // APP_ERROR_CHECK(err_code);
 }
 
 
@@ -293,14 +255,14 @@ static void sleep_mode_enter(void)
      */
 static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 {
-    ret_code_t err_code;
+    // ret_code_t err_code;
 
     switch (ble_adv_evt)
     {
         case BLE_ADV_EVT_FAST:
             NRF_LOG_INFO("ADV Event: Start fast advertising");
-            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-            APP_ERROR_CHECK(err_code);
+            // err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
+            // APP_ERROR_CHECK(err_code);
             break;
 
         case BLE_ADV_EVT_IDLE:
@@ -321,19 +283,9 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
      */
 static void recieve_data(ble_evt_t const * p_ble_evt)
 {
-    // 
-    
-    if(m_ble_context.recieve)
-    {
-        NRF_LOG_INFO("Recieve1");
-        ble_gatts_evt_write_t const * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
-        m_ble_context.recieve((uint8_t*)&p_evt_write->data, p_evt_write->len);
-    }
-    else{
-        NRF_LOG_INFO("Recieve");
-    }
-    
-    // m_ble_context.recieve((uint8_t*)&p_evt_write->data, p_evt_write->len);
+    ble_gatts_evt_write_t const * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
+    NRF_LOG_INFO("Recieve: %d\n", p_evt_write->len);
+    m_ble_context.recieve_notify((uint8_t*)&p_evt_write->data, p_evt_write->len);
 }
 
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
@@ -345,10 +297,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected (conn_handle: %d)", p_ble_evt->evt.gap_evt.conn_handle);
-            // LED indication will be changed when advertising starts.
             m_ble_context.stop_callback();
-            app_timer_stop(m_notification_timer_id);
-            app_timer_stop(m_indication_timer_id);
             break;
 
         case BLE_GATTS_EVT_WRITE:
@@ -358,7 +307,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected (conn_handle: %d)", p_ble_evt->evt.gap_evt.conn_handle);
 
-            err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
+            // err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
             APP_ERROR_CHECK(err_code);
 
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
@@ -366,8 +315,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             APP_ERROR_CHECK(err_code);
 
             m_ble_context.start_callback();
-            app_timer_start(m_notification_timer_id, APP_NOTIFICATION_TIMER_TIMEOUT, NULL);
-            app_timer_start(m_indication_timer_id, APP_INDICATION_TIMER_TIMEOUT, NULL);
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
@@ -389,8 +336,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                                                 BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
             APP_ERROR_CHECK(err_code);
             m_ble_context.stop_callback();
-            // app_timer_stop(m_notification_timer_id);
-            // app_timer_stop(m_indication_timer_id);
             break;
 
         case BLE_GATTS_EVT_TIMEOUT:
@@ -438,28 +383,28 @@ static void ble_stack_init(void)
      *
      * @param[in]   event   Event generated when button is pressed.
      */
-static void bsp_event_handler(bsp_event_t event)
-{
-    ret_code_t err_code;
+// static void bsp_event_handler(bsp_event_t event)
+// {
+//     ret_code_t err_code;
 
-    switch (event)
-    {
-        case BSP_EVENT_SLEEP:
-            sleep_mode_enter();
-            break; // BSP_EVENT_SLEEP
+//     switch (event)
+//     {
+//         case BSP_EVENT_SLEEP:
+//             sleep_mode_enter();
+//             break; // BSP_EVENT_SLEEP
 
-        case BSP_EVENT_DISCONNECT:
-            err_code = sd_ble_gap_disconnect(m_conn_handle,
-                                                BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
-            if (err_code != NRF_ERROR_INVALID_STATE)
-            {
-                APP_ERROR_CHECK(err_code);
-            }
-            break; // BSP_EVENT_DISCONNECT
-        default:
-            break;
-    }
-}
+//         case BSP_EVENT_DISCONNECT:
+//             err_code = sd_ble_gap_disconnect(m_conn_handle,
+//                                                 BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
+//             if (err_code != NRF_ERROR_INVALID_STATE)
+//             {
+//                 APP_ERROR_CHECK(err_code);
+//             }
+//             break; // BSP_EVENT_DISCONNECT
+//         default:
+//             break;
+//     }
+// }
 
 
     /**@brief Function for initializing the Advertising functionality.
@@ -483,7 +428,7 @@ static void advertising_init(void)
     init.config.ble_adv_fast_timeout     = APP_ADV_DURATION;
 
     init.srdata.name_type               = BLE_ADVDATA_FULL_NAME;
-    init.srdata.uuids_complete.uuid_cnt = 1;
+    init.srdata.uuids_complete.uuid_cnt = sizeof(uint8_t);
     init.srdata.uuids_complete.p_uuids  = &m_adv_srv_uuids;
     init.evt_handler = on_adv_evt;
 
@@ -498,16 +443,16 @@ static void advertising_init(void)
      *
      * @param[out] p_erase_bonds  Will be true if the clear bonding button was pressed to wake the application up.
      */
-static void buttons_leds_init(void)
-{
-    ret_code_t err_code;
+// static void buttons_leds_init(void)
+// {
+//     ret_code_t err_code;
 
-    err_code = bsp_init(BSP_INIT_LEDS | BSP_INIT_BUTTONS, bsp_event_handler);
-    APP_ERROR_CHECK(err_code);
+//     err_code = bsp_init(BSP_INIT_LEDS | BSP_INIT_BUTTONS, bsp_event_handler);
+//     APP_ERROR_CHECK(err_code);
 
-    err_code = bsp_btn_ble_init(NULL, NULL);
-    APP_ERROR_CHECK(err_code);
-}
+//     err_code = bsp_btn_ble_init(NULL, NULL);
+//     APP_ERROR_CHECK(err_code);
+// }
 
 
     /**@brief Function for initializing power management.
@@ -540,18 +485,31 @@ static void advertising_start(void)
     APP_ERROR_CHECK(err_code);
 }
 
-void send_data(uint8_t *data, uint16_t len)
+void send_data_notification(uint8_t *data, uint16_t len)
 {
+    // uint32_t t = ((uint32_t*))
+    // NRF_LOG_INFO("Wait...%d %d\n", notification_value);
+    estc_update_characteristic_value(m_estc_service.connection_handle, 
+                                    m_estc_service.notification_characteristic.value_handle,
+                                    BLE_GATT_HVX_NOTIFICATION,
+                                    data,
+                                    len);
+}
 
+
+void send_data_indication(uint8_t *data, uint16_t len)
+{
+    estc_update_characteristic_value(m_estc_service.connection_handle, 
+                                    m_estc_service.indication_characteristic.value_handle,
+                                    BLE_GATT_HVX_INDICATION,
+                                    data,
+                                    len);
 }
 
 void ble_init(ble_context *context)
 {
-    m_ble_context.recieve = context->recieve;
-    m_ble_context.start_callback = context->start_callback;
-    m_ble_context.stop_callback = context->stop_callback;
-    timers_init();
-    buttons_leds_init();
+    m_ble_context = *context;
+    // buttons_leds_init();
     power_management_init();
     ble_stack_init();
     gap_params_init();

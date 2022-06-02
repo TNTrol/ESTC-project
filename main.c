@@ -57,8 +57,8 @@
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
-#include "estc_timer.h"
-#include "estc_ble.h"
+#include "timer/estc_timer.h"
+#include "service/estc_ble.h"
 
 static uint8_t color[3];
 

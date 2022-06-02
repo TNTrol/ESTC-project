@@ -93,9 +93,9 @@ SRC_FILES += \
   $(SDK_ROOT)/components/ble/common/ble_conn_params.c \
   $(SDK_ROOT)/components/ble/common/ble_advdata.c \
   $(SDK_ROOT)/components/ble/ble_advertising/ble_advertising.c \
-  $(PROJ_DIR)/estc_service.c \
-  $(PROJ_DIR)/estc_ble.c \
-  $(PROJ_DIR)/estc_timer.c \
+  $(PROJ_DIR)/service/estc_ble.c \
+  $(PROJ_DIR)/service/estc_service.c \
+  $(PROJ_DIR)/timer/estc_timer.c \
   $(PROJ_DIR)/main.c \
 
 # Include folders common to all targets

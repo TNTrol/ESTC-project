@@ -9,8 +9,6 @@
 #define END_PAGE_FLASH 0xDEFFFU
 #define SIZE_STEP_FLASH 0x4U
 #define COUNT_PAGES_FLASH 2
-#define DATA_MASK 0b11111111
-#define CONTROL_MASK_FLASH ((0b11111111)<< 24)
 
 void init_memory_module_32(hsv_t *color);
 

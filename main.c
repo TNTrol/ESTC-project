@@ -40,6 +40,17 @@ static pwm_ctx_t        m_pwm_rgb       = GET_DEFAULT_CTX(1);
 static bool             m_save          = false;
 APP_TIMER_DEF(m_update_timer_id);
 
+static void stop_connection_handler();
+static void start_connection_handler();
+static void recieve_notification_handler(uint8_t *data, uint16_t len);
+
+static ble_context      m_context       = {.recieve_notify = recieve_notification_handler, 
+                                            .start_connect_callback = start_connection_handler, 
+                                            .stop_connect_callback = stop_connection_handler,
+                                            .recieve_inditify = NULL,
+                                            .notification_value = {.value = (uint8_t*)&m_rgb_color, .size = 3},
+                                            .indication_value = {.value = (uint8_t*)&m_rgb_color, .size=3}};
+
 #if ESTC_USB_CLI_ENABLED
 static void handler_hsv_command(const char *line, uint8_t count_word);
 static void handler_rgb_command(const char *line, uint8_t count_word);
@@ -53,6 +64,13 @@ static command_t        m_commands[]    = {
         {.name = "save", .handler = handler_save_command}
 };
 #endif
+
+void init_log(void)
+{
+    APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
+    NRF_LOG_INFO("Starting up the test project with USB logging");
+    NRF_LOG_DEFAULT_BACKENDS_INIT();
+}
 
 void rgb_on()
 {
@@ -68,7 +86,6 @@ void rgb_on()
 static void save()
 {
     write_data_in_flash(&m_hsv_color);
-    // NRF_LOG_INFO("Save");
 }
 
 static void update_timer_handler(void *p)
@@ -81,42 +98,31 @@ void log_init()
 {
     ret_code_t err_code = NRF_LOG_INIT(NULL);
     APP_ERROR_CHECK(err_code);
-
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 }
 
-static void stop()
+static void stop_connection_handler()
 {
     NRF_LOG_INFO("Disconnected");
     app_timer_stop(m_update_timer_id);
 }
 
-static void start()
+static void start_connection_handler()
 {
     NRF_LOG_INFO("Connected");
     app_timer_start(m_update_timer_id, UPDATE_TIMEOUT, NULL);
 }
 
-static void recieve_notification(uint8_t *data, uint16_t len)
+static void recieve_notification_handler(uint8_t *data, uint16_t len)
 {
     hsv_t color = {0};
     read_data_in_flash(&color);
-    NRF_LOG_INFO("Old hsv %d %d %d", color.h, color.s, color.v);
-    NRF_LOG_INFO("Recieve: %d", len);
     m_rgb_color.r = data[0];
     m_rgb_color.g = data[1];
     m_rgb_color.b = data[2];
     rgb_to_hsv(&m_rgb_color, &m_hsv_color);
-    NRF_LOG_INFO("New hsv %d %d %d", m_hsv_color.h, m_hsv_color.s, m_hsv_color.v);
     rgb_on();
     save();
-}
-
-void init_log(void)
-{
-    APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
-    NRF_LOG_INFO("Starting up the test project with USB logging");
-    NRF_LOG_DEFAULT_BACKENDS_INIT();
 }
 
 void double_button_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
@@ -143,7 +149,6 @@ void double_button_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
     }
     default:
         set_value_of_channel(&m_pwm, m_phase, 0);
-        // save();
         m_save = true;
         break;
     }
@@ -226,6 +231,7 @@ static void func_convert_to_color(bool is_rgb, const char *line, uint8_t count_w
     }
     m_hsv_color = hsv;
     m_rgb_color = rgb;
+    save();
     rgb_on();
 }
 
@@ -277,22 +283,9 @@ static void handler_unknown_command(const char *line, uint8_t count_word)
 int main(void)
 {
     uint16_t h = 0, s = 0, v = 0;
-
-    
-    // if (!read_data_in_flash( &m_hsv_color))
-    // {
-    //     //write_data_in_flash(&m_hsv_color);
-    // }
-
     app_timer_create(&m_update_timer_id , APP_TIMER_MODE_REPEATED, update_timer_handler);
     init_log();
-    ble_context context = {.recieve_notify = recieve_notification, 
-                            .start_connect_callback = start, 
-                            .stop_connect_callback = stop,
-                            .recieve_inditify = NULL,
-                            .notification_value = {.value = (uint8_t*)&m_rgb_color, .size = 3},
-                            .indication_value = {.value = (uint8_t*)&m_rgb_color, .size=3}};
-    ble_init(&context);
+    ble_init(&m_context);
     init_leds();
     init_button();
     init_pwn_module_for_leds(&m_pwm, pwn_control_led_handler, MAX_TIME_PWM_CICLE, CONTROL_MASK);
@@ -303,8 +296,7 @@ int main(void)
     init_parse(ARRAY_SIZE(m_commands), m_commands, handler_unknown_command);
     #endif
     init_memory_module_32(&m_hsv_color);
-    read_data_in_flash( &m_hsv_color);
-    
+
     hsv_to_rgb(&m_hsv_color, &m_rgb_color);
     rgb_on();
 

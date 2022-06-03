@@ -81,12 +81,6 @@ void assert_nrf_callback(uint16_t line_num, const uint8_t * p_file_name)
     app_error_handler(DEAD_BEEF, line_num, p_file_name);
 }
 
-/**@brief Function for the Timer initialization.
- *
- * @details Initializes the timer module. This creates and starts application timers.
- */
-
-
 /**@brief Function for the GAP initialization.
  *
  * @details This function sets up all the necessary GAP (Generic Access Profile) parameters of the
@@ -265,7 +259,13 @@ static void recieve_data(ble_evt_t const * p_ble_evt)
     ble_gatts_evt_write_t const * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
     if (p_evt_write->handle == m_estc_service.notification_characteristic.value_handle && m_ble_context.recieve_notify)
     {
-        if (p_evt_write->len == m_ble_context.notification_value.size)//(ble_srv_is_notification_enabled(p_evt_write->data))
+        /**
+         * P.S.
+         * I dont use function ble_srv_is_notification_enabled(...)
+         * becouse it's function bad work. Function not always return true 
+         * when notification is enabled. I don't know. But i very tried solve this problem.
+         */
+        if (p_evt_write->len == m_ble_context.notification_value.size)
         {
             m_ble_context.recieve_notify((uint8_t*)&p_evt_write->data, p_evt_write->len);
         }
@@ -315,7 +315,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         } break;
 
         case BLE_GATTC_EVT_TIMEOUT:
-            // Disconnect on GATT Client timeout event.
             NRF_LOG_DEBUG("GATT Client Timeout (conn_handle: %d)", p_ble_evt->evt.gattc_evt.conn_handle);
             err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gattc_evt.conn_handle,
                                                 BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
@@ -324,7 +323,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             break;
 
         case BLE_GATTS_EVT_TIMEOUT:
-            // Disconnect on GATT Server timeout event.
             NRF_LOG_DEBUG("GATT Server Timeout (conn_handle: %d)", p_ble_evt->evt.gatts_evt.conn_handle);
             err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gatts_evt.conn_handle,
                                                 BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);

@@ -5,6 +5,15 @@
 #include "nrf_fstorage.h"
 #include "../color_module/color_module.h"
 
+/**
+ *                  !!! Achtung !!!
+ * Address 0xDD000U don't work. When i use this then
+ *                  i get hard fault.
+ * 
+ *              I can kill bootloader T_T 
+ *                  I repair it! :)
+ * 
+ */
 #define START_FIRST_PAGE_FLASH 0xDE000U
 #define END_PAGE_FLASH 0xDEFFFU
 #define SIZE_STEP_FLASH 0x4U

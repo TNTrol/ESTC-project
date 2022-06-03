@@ -37,7 +37,7 @@ static rgb_t            m_rgb_color     = {0, 0, 0};
 static hsv_t            m_hsv_color     = {0, 100, 100};
 static pwm_ctx_t        m_pwm           = GET_DEFAULT_CTX(0);
 static pwm_ctx_t        m_pwm_rgb       = GET_DEFAULT_CTX(1);
-static bool             m_save          = false;
+static bool             m_is_save       = false;
 APP_TIMER_DEF(m_update_timer_id);
 
 static void stop_connection_handler();
@@ -103,13 +103,11 @@ void log_init()
 
 static void stop_connection_handler()
 {
-    NRF_LOG_INFO("Disconnected");
     app_timer_stop(m_update_timer_id);
 }
 
 static void start_connection_handler()
 {
-    NRF_LOG_INFO("Connected");
     app_timer_start(m_update_timer_id, UPDATE_TIMEOUT, NULL);
 }
 
@@ -149,7 +147,7 @@ void double_button_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
     }
     default:
         set_value_of_channel(&m_pwm, m_phase, 0);
-        m_save = true;
+        m_is_save = true;
         break;
     }
 }
@@ -306,9 +304,9 @@ int main(void)
         #if ESTC_USB_CLI_ENABLED
         app_usbd_event_queue_process();
         #endif
-        if (m_save)
+        if (m_is_save)
         {
-            m_save = false;
+            m_is_save = false;
             save();
         }
         if(m_state != MOD_NONE && is_long_press())

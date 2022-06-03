@@ -1,12 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
-#include "gpio_module/gpio_module.h"
-#include "pwm_module/pwm_module.h"
-#include "button_module/button_module.h"
-#include "util_module/utils.h"
-#include "color_module/color_module.h"
-#include "nrf_delay.h"
-#include "memory_module/memory_module.h"
+#include <string.h>
+
 #if ESTC_USB_CLI_ENABLED
 #include "usb_module/usb_module.h"
 #include "command_module/command.h"
@@ -17,11 +12,44 @@
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
+#include "service/estc_ble.h"
+#include "gpio_module/gpio_module.h"
+#include "pwm_module/pwm_module.h"
+#include "button_module/button_module.h"
+#include "util_module/utils.h"
+#include "color_module/color_module.h"
+#include "nrf_delay.h"
+#include "app_timer.h"
+
+#include "memory_module/memory_module.h"
+
+#define UPDATE_TIMEOUT 400
 #define CONTROL_MASK 1
 #define RGB_MASK ((1 << 1) | (1 << 2) | (1 << 3))
 #define MAX_TIME_PWM_CICLE 20000
 #define MAX_VALUE_COUNTER (1024 * 8)
 #define MAX_VALUE_STEP_COUNTER (16)
+
+static uint16_t         m_pwm_step      = 200;
+static volatile uint8_t m_phase         = 0;
+static modificator_t    m_state         = MOD_NONE;
+static rgb_t            m_rgb_color     = {0, 0, 0};
+static hsv_t            m_hsv_color     = {0, 100, 100};
+static pwm_ctx_t        m_pwm           = GET_DEFAULT_CTX(0);
+static pwm_ctx_t        m_pwm_rgb       = GET_DEFAULT_CTX(1);
+static bool             m_is_save       = false;
+APP_TIMER_DEF(m_update_timer_id);
+
+static void stop_connection_handler();
+static void start_connection_handler();
+static void recieve_notification_handler(uint8_t *data, uint16_t len);
+
+static ble_context      m_context       = {.recieve_notify = recieve_notification_handler, 
+                                            .start_connect_callback = start_connection_handler, 
+                                            .stop_connect_callback = stop_connection_handler,
+                                            .recieve_inditify = NULL,
+                                            .notification_value = {.value = (uint8_t*)&m_rgb_color, .size = 3},
+                                            .indication_value = {.value = (uint8_t*)&m_rgb_color, .size=3}};
 
 #if ESTC_USB_CLI_ENABLED
 static void handler_hsv_command(const char *line, uint8_t count_word);
@@ -37,20 +65,62 @@ static command_t        m_commands[]    = {
 };
 #endif
 
-static uint16_t         m_pwm_step      = 200;
-static volatile uint8_t m_phase         = 0;
-static modificator_t    m_state         = MOD_NONE;
-static rgb_t            m_rgb_color     = {0, 0, 0};
-static hsv_t            m_hsv_color     = {0, 100, 100};
-static pwm_ctx_t        m_pwm           = GET_DEFAULT_CTX(0);
-static pwm_ctx_t        m_pwm_rgb       = GET_DEFAULT_CTX(1);
-
-
 void init_log(void)
 {
     APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
     NRF_LOG_INFO("Starting up the test project with USB logging");
     NRF_LOG_DEFAULT_BACKENDS_INIT();
+}
+
+void rgb_on()
+{
+    uint32_t step   = MAX_TIME_PWM_CICLE / 255;
+    uint32_t r      = m_rgb_color.r * step;
+    uint32_t g      = m_rgb_color.g * step;
+    uint32_t b      = m_rgb_color.b * step;
+    set_value_of_channel(&m_pwm_rgb, 1, r);
+    set_value_of_channel(&m_pwm_rgb, 2, g);
+    set_value_of_channel(&m_pwm_rgb, 3, b);
+}
+
+static void save()
+{
+    write_data_in_flash(&m_hsv_color);
+}
+
+static void update_timer_handler(void *p)
+{
+    send_data_notification((uint8_t*) &m_rgb_color, 3);
+    send_data_indication((uint8_t*) &m_rgb_color, 3);
+}
+
+void log_init()
+{
+    ret_code_t err_code = NRF_LOG_INIT(NULL);
+    APP_ERROR_CHECK(err_code);
+    NRF_LOG_DEFAULT_BACKENDS_INIT();
+}
+
+static void stop_connection_handler()
+{
+    app_timer_stop(m_update_timer_id);
+}
+
+static void start_connection_handler()
+{
+    app_timer_start(m_update_timer_id, UPDATE_TIMEOUT, NULL);
+}
+
+static void recieve_notification_handler(uint8_t *data, uint16_t len)
+{
+    hsv_t color = {0};
+    read_data_in_flash(&color);
+    m_rgb_color.r = data[0];
+    m_rgb_color.g = data[1];
+    m_rgb_color.b = data[2];
+    rgb_to_hsv(&m_rgb_color, &m_hsv_color);
+    rgb_on();
+    save();
 }
 
 void double_button_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
@@ -77,7 +147,7 @@ void double_button_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
     }
     default:
         set_value_of_channel(&m_pwm, m_phase, 0);
-        write_data_in_flash(&m_hsv_color);
+        m_is_save = true;
         break;
     }
 }
@@ -110,17 +180,6 @@ static void pwn_control_led_handler(nrfx_pwm_evt_type_t event_type)
             m_phase = down ? m_phase - 1 : m_phase + 1;
         }
     }
-}
-
-void rgb_on()
-{
-    uint32_t step   = MAX_TIME_PWM_CICLE / 255;
-    uint32_t r      = m_rgb_color.r * step;
-    uint32_t g      = m_rgb_color.g * step;
-    uint32_t b      = m_rgb_color.b * step;
-    set_value_of_channel(&m_pwm_rgb, 1, r);
-    set_value_of_channel(&m_pwm_rgb, 2, g);
-    set_value_of_channel(&m_pwm_rgb, 3, b);
 }
 
 #if ESTC_USB_CLI_ENABLED
@@ -170,6 +229,7 @@ static void func_convert_to_color(bool is_rgb, const char *line, uint8_t count_w
     }
     m_hsv_color = hsv;
     m_rgb_color = rgb;
+    save();
     rgb_on();
 }
 
@@ -199,7 +259,7 @@ static void handler_save_command(const char *line, uint8_t count_word)
 {
     if(count_word == 0)
     {
-        write_data_in_flash(&m_hsv_color);
+        save();
     }
     else
     {
@@ -221,8 +281,9 @@ static void handler_unknown_command(const char *line, uint8_t count_word)
 int main(void)
 {
     uint16_t h = 0, s = 0, v = 0;
-    
+    app_timer_create(&m_update_timer_id , APP_TIMER_MODE_REPEATED, update_timer_handler);
     init_log();
+    ble_init(&m_context);
     init_leds();
     init_button();
     init_pwn_module_for_leds(&m_pwm, pwn_control_led_handler, MAX_TIME_PWM_CICLE, CONTROL_MASK);
@@ -232,22 +293,22 @@ int main(void)
     init_usb_module(handler_usb_read);
     init_parse(ARRAY_SIZE(m_commands), m_commands, handler_unknown_command);
     #endif
+    init_memory_module_32(&m_hsv_color);
 
-    init_memory_module_32();
-    if (!read_data_in_flash( &m_hsv_color))
-    {
-        write_data_in_flash(&m_hsv_color);
-    }
     hsv_to_rgb(&m_hsv_color, &m_rgb_color);
     rgb_on();
 
     while (true)
     {
-        LOG_BACKEND_USB_PROCESS();
-        NRF_LOG_PROCESS();
+        idle_state_handle();
         #if ESTC_USB_CLI_ENABLED
         app_usbd_event_queue_process();
         #endif
+        if (m_is_save)
+        {
+            m_is_save = false;
+            save();
+        }
         if(m_state != MOD_NONE && is_long_press())
         {
             NRF_LOG_INFO("State %d Color r=%d, g=%d, b=%d", m_state, m_rgb_color.r, m_rgb_color.g, m_rgb_color.b);
@@ -256,22 +317,18 @@ int main(void)
             case MOD_H:
                 h = circle_increment(h, MAX_VALUE_COUNTER);
                 m_hsv_color.h = h / MAX_VALUE_STEP_COUNTER;
-                hsv_to_rgb(&m_hsv_color, &m_rgb_color);
-                rgb_on();
                 break;
             case MOD_S:
                 s = circle_increment(s, MAX_VALUE_COUNTER);
                 m_hsv_color.s = s / MAX_VALUE_STEP_COUNTER;
-                hsv_to_rgb(&m_hsv_color, &m_rgb_color);
-                rgb_on();
                 break;
             default:
                 v = circle_increment(v, MAX_VALUE_COUNTER);
                 m_hsv_color.v = v / MAX_VALUE_STEP_COUNTER;
-                hsv_to_rgb(&m_hsv_color, &m_rgb_color);
-                rgb_on();
                 break;
             }
+            hsv_to_rgb(&m_hsv_color, &m_rgb_color);
+            rgb_on();
             nrf_delay_ms(1);
         }
     }

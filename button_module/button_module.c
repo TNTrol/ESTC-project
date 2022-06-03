@@ -1,16 +1,19 @@
 #include "button_module.h"
+#include "../timer/estc_timer.h"
 
-static button_module_ctx_t m_btn_ctx = GET_DEFAULT_BUTTON_CTX(0);
+static button_module_ctx_t m_btn_ctx = GET_DEFAULT_BUTTON_CTX;
 
-static void rtc_handler(nrfx_rtc_int_type_t int_type)
+static void start_timer_handler()
 {
+    m_btn_ctx.is_button_range = true;
+    timer_stop_first();
 }
 
-static void init_rtc(void)
+static void stop_timer_handler()
 {
-    nrfx_rtc_config_t conf = NRFX_RTC_DEFAULT_CONFIG;
-    nrfx_rtc_init(&m_btn_ctx.rtc_timer, &conf, rtc_handler);
-    nrfx_rtc_enable(&m_btn_ctx.rtc_timer);
+    m_btn_ctx.is_button_range = false;
+    timer_stop_second();
+    m_btn_ctx.is_most_long = m_btn_ctx.is_long_press;
 }
 
 static void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
@@ -20,21 +23,26 @@ static void button_pressed_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t 
     {
         if (m_btn_ctx.is_first_click)
         {
-            uint32_t t = nrfx_rtc_counter_get(&m_btn_ctx.rtc_timer) - m_btn_ctx.prev_button_time;
-            if (t > DEVICE_BUTTON_DELAY_MIN && t < DEVICE_BUTTON_DELAY_MAX)
+            if (m_btn_ctx.is_button_range)
             {
                 m_btn_ctx.is_first_click = false;
                 m_btn_ctx.double_button_evt_handler(pin, action);
                 return;
             }
         }
-        m_btn_ctx.prev_button_time = nrfx_rtc_counter_get(&m_btn_ctx.rtc_timer);
+        m_btn_ctx.prev_button_time = 0;//nrfx_rtc_counter_get(&m_btn_ctx.rtc_timer);
         m_btn_ctx.is_first_click = true;
         m_btn_ctx.is_long_press = true;
+        m_btn_ctx.is_most_long = false;
+        timer_stop_first();
+        timer_stop_second();
+        timer_start_first();
+        timer_start_second();
     }
     else
     {
         m_btn_ctx.is_long_press = false;
+        m_btn_ctx.is_most_long = false;
     }
 }
 
@@ -50,10 +58,10 @@ void init_gpiote_button(nrfx_gpiote_evt_handler_t double_button_evt_handler)
     m_btn_ctx.double_button_evt_handler = double_button_evt_handler;
     nrfx_gpiote_in_init(BUTTON_1, &btn_gpiote_cfg, button_pressed_handler);
     nrfx_gpiote_in_event_enable(BUTTON_1, true);
-    init_rtc();
+    timer_init(start_timer_handler, stop_timer_handler, DEVICE_BUTTON_DELAY_MIN, DEVICE_BUTTON_DELAY_MAX);
 }
 
 bool is_long_press()
 {
-    return m_btn_ctx.is_long_press && nrfx_rtc_counter_get(&m_btn_ctx.rtc_timer) - m_btn_ctx.prev_button_time > DEVICE_BUTTON_DELAY_MAX;
+    return m_btn_ctx.is_long_press && m_btn_ctx.is_most_long;
 }

@@ -6,6 +6,8 @@ DFU_PORT         ?= /dev/ttyACM0
 SDK_ROOT := ../../../../ESTC-NSDK
 PROJ_DIR := ../../..
 
+ESTC_USB_CLI_ENABLED=0
+
 $(OUTPUT_DIRECTORY)/nrf52840_xxaa.out: \
   LINKER_SCRIPT  := estc_service_gcc_nrf52.ld
 
@@ -96,7 +98,24 @@ SRC_FILES += \
   $(PROJ_DIR)/service/estc_ble.c \
   $(PROJ_DIR)/service/estc_service.c \
   $(PROJ_DIR)/timer/estc_timer.c \
-  $(PROJ_DIR)/main.c \
+    $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_gpiote.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_rtc.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_systick.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_rtc.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_pwm.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_nvmc.c \
+  $(PROJ_DIR)/gpio_module/gpio_module.c \
+  $(PROJ_DIR)/pwm_module/pwm_module.c \
+  $(PROJ_DIR)/button_module/button_module.c \
+  $(PROJ_DIR)/color_module/color_module.c \
+  $(PROJ_DIR)/util_module/utils.c \
+  $(PROJ_DIR)/memory_module/memory_module.c \
+  $(PROJ_DIR)/command_module/command.c \
+  $(PROJ_DIR)/main.c
+
+  ifeq ($(ESTC_USB_CLI_ENABLED), 1)
+     SRC_FILES += $(PROJ_DIR)/usb_module/usb_module.c
+  endif
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -151,6 +170,7 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/libraries/usbd/class/cdc \
   $(SDK_ROOT)/components/libraries/usbd/class/audio \
   $(SDK_ROOT)/components/libraries/usbd \
+  $(SDK_ROOT)/components/libraries/pwm \
   $(SDK_ROOT)/components/libraries/twi_sensor \
   $(SDK_ROOT)/components/libraries/twi_mngr \
   $(SDK_ROOT)/components/libraries/timer \
@@ -233,6 +253,8 @@ INC_FOLDERS += \
 
 # Libraries common to all targets
 LIB_FILES += \
+  $(SDK_ROOT)/external/nrf_cc310/lib/cortex-m4/hard-float/libnrf_cc310_0.9.13.a \
+  $(SDK_ROOT)/external/nrf_oberon/lib/cortex-m4/hard-float/liboberon_3.0.8.a \
 
 # Optimization flags
 OPT = -O3 -g3
@@ -259,6 +281,7 @@ CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # keep every function in a separate section, this allows linker to discard unused ones
 CFLAGS += -ffunction-sections -fdata-sections -fno-strict-aliasing
 CFLAGS += -fno-builtin -fshort-enums
+CFLAGS += -DESTC_USB_CLI_ENABLED=${ESTC_USB_CLI_ENABLED}
 
 # C++ flags common to all targets
 CXXFLAGS += $(OPT)
@@ -278,6 +301,13 @@ ASMFLAGS += -DNRF52840_XXAA
 ASMFLAGS += -DNRF_SD_BLE_API_VERSION=7
 ASMFLAGS += -DS140
 ASMFLA40 += -DSOFTDEVICE_PRESENT
+ASMFLAGS += -DNRF52840_XXAA
+ASMFLAGS += -DNRF_CRYPTO_MAX_INSTANCE_COUNT=1
+ASMFLAGS += -DuECC_ENABLE_VLI_API=0
+ASMFLAGS += -DuECC_OPTIMIZATION_LEVEL=3
+ASMFLAGS += -DuECC_SQUARE_FUNC=0
+ASMFLAGS += -DuECC_SUPPORT_COMPRESSED_POINT=0
+ASMFLAGS += -DuECC_VLI_NATIVE_LITTLE_ENDIAN=1
 
 # Linker flags
 LDFLAGS += $(OPT)

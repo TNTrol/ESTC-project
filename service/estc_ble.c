@@ -168,7 +168,7 @@ static void services_init(void)
     err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
     APP_ERROR_CHECK(err_code);
 
-    value_char arr[] = {m_ble_context.defult_value, m_ble_context.indication_value, m_ble_context.notification_value};
+    value_char arr[] = {m_ble_context.indication_value, m_ble_context.notification_value};
     err_code = estc_ble_service_init(&m_estc_service, arr);
     APP_ERROR_CHECK(err_code);
 }
@@ -276,16 +276,27 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 }
 
 
-    /**@brief Function for handling BLE events.
-     *
-     * @param[in]   p_ble_evt   Bluetooth stack event.
-     * @param[in]   p_context   Unused.
-     */
 static void recieve_data(ble_evt_t const * p_ble_evt)
 {
     ble_gatts_evt_write_t const * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
-    NRF_LOG_INFO("Recieve: %d\n", p_evt_write->len);
-    m_ble_context.recieve_notify((uint8_t*)&p_evt_write->data, p_evt_write->len);
+    if (p_evt_write->handle == m_estc_service.notification_characteristic.value_handle && m_ble_context.recieve_notify)
+    {
+        if (ble_srv_is_notification_enabled(p_evt_write->data))
+        {
+            m_ble_context.is_notify_open = true;
+            m_ble_context.recieve_notify((uint8_t*)&p_evt_write->data, p_evt_write->len);
+        }
+        else
+        {
+            m_ble_context.is_notify_open = false;
+        }
+        return;
+    }
+    if (p_evt_write->handle == m_estc_service.indication_characteristic.value_handle && m_ble_context.recieve_inditify)
+    {
+        m_ble_context.recieve_inditify((uint8_t*)&p_evt_write->data, p_evt_write->len);
+        return;
+    }
 }
 
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
@@ -297,7 +308,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected (conn_handle: %d)", p_ble_evt->evt.gap_evt.conn_handle);
-            m_ble_context.stop_callback();
+            m_ble_context.stop_connect_callback();
+            m_ble_context.is_notify_open = false;
             break;
 
         case BLE_GATTS_EVT_WRITE:
@@ -306,15 +318,10 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 
         case BLE_GAP_EVT_CONNECTED:
             NRF_LOG_INFO("Connected (conn_handle: %d)", p_ble_evt->evt.gap_evt.conn_handle);
-
-            // err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
-            APP_ERROR_CHECK(err_code);
-
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
-
-            m_ble_context.start_callback();
+            m_ble_context.start_connect_callback();
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
@@ -335,7 +342,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gattc_evt.conn_handle,
                                                 BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
             APP_ERROR_CHECK(err_code);
-            m_ble_context.stop_callback();
+            m_ble_context.stop_connect_callback();
+            m_ble_context.is_notify_open = false;
             break;
 
         case BLE_GATTS_EVT_TIMEOUT:
@@ -438,25 +446,6 @@ static void advertising_init(void)
     ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
 }
 
-
-    /**@brief Function for initializing buttons and leds.
-     *
-     * @param[out] p_erase_bonds  Will be true if the clear bonding button was pressed to wake the application up.
-     */
-// static void buttons_leds_init(void)
-// {
-//     ret_code_t err_code;
-
-//     err_code = bsp_init(BSP_INIT_LEDS | BSP_INIT_BUTTONS, bsp_event_handler);
-//     APP_ERROR_CHECK(err_code);
-
-//     err_code = bsp_btn_ble_init(NULL, NULL);
-//     APP_ERROR_CHECK(err_code);
-// }
-
-
-    /**@brief Function for initializing power management.
-     */
 static void power_management_init(void)
 {
     ret_code_t err_code;
@@ -464,11 +453,6 @@ static void power_management_init(void)
     APP_ERROR_CHECK(err_code);
 }
 
-
-    /**@brief Function for handling the idle state (main loop).
-     *
-     * @details If there is no pending log operation, then sleep until next the next event occurs.
-     */
 void idle_state_handle(void)
 {
     if (NRF_LOG_PROCESS() == false)
@@ -487,8 +471,10 @@ static void advertising_start(void)
 
 void send_data_notification(uint8_t *data, uint16_t len)
 {
-    // uint32_t t = ((uint32_t*))
-    // NRF_LOG_INFO("Wait...%d %d\n", notification_value);
+    if(!m_ble_context.is_notify_open)
+    {
+        return;
+    }
     estc_update_characteristic_value(m_estc_service.connection_handle, 
                                     m_estc_service.notification_characteristic.value_handle,
                                     BLE_GATT_HVX_NOTIFICATION,
@@ -509,7 +495,7 @@ void send_data_indication(uint8_t *data, uint16_t len)
 void ble_init(ble_context *context)
 {
     m_ble_context = *context;
-    // buttons_leds_init();
+    m_ble_context.is_notify_open = false;
     power_management_init();
     ble_stack_init();
     gap_params_init();

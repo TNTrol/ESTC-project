@@ -42,7 +42,7 @@
 #define INDICATE_PROP 0b100
 #define NOTIFY_PROP 0b1000
 
-static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, value_char values[3]);
+static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, value_char values[2]);
 
 static ret_code_t estc_ble_add_uni_characteristic(uint16_t service_handle, 
                                                     const uint8_t *description, 
@@ -54,7 +54,7 @@ static ret_code_t estc_ble_add_uni_characteristic(uint16_t service_handle,
                                                     uint16_t data_size);
 
 
-ret_code_t estc_ble_service_init(ble_estc_service_t *service, value_char values[3])
+ret_code_t estc_ble_service_init(ble_estc_service_t *service, value_char values[2])
 {
     ret_code_t      error_code = NRF_SUCCESS;
     ble_uuid128_t   base_uuid = {ESTC_BASE_UUID};
@@ -68,21 +68,19 @@ ret_code_t estc_ble_service_init(ble_estc_service_t *service, value_char values[
     return estc_ble_add_characteristics(service, values);
 }
 
-static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, value_char values[3])
+static ret_code_t estc_ble_add_characteristics(ble_estc_service_t *service, value_char values[2])
 {
     ret_code_t      error_code = NRF_SUCCESS;
-    const uint8_t   desc[] = ESTC_USER_CHAR_DESCR;
     const uint8_t   desc2[] = ESTC_OTHER_CHAR_DESCR;
     const uint8_t   desc3[] = ESTC_NOTIFICATION_CHAR_DESCR;
-    ble_uuid_t      ble_uuid = {.uuid = ESTC_GATT_CHAR_1_UUID, .type = BLE_UUID_TYPE_BLE};
     ble_uuid_t      ble_uuid2 = {.uuid = ESTC_GATT_CHAR_2_UUID, .type = BLE_UUID_TYPE_BLE};
     ble_uuid_t      ble_uuid3 = {.uuid = ESTC_GATT_CHAR_3_UUID, .type = BLE_UUID_TYPE_BLE};
 
-    error_code = estc_ble_add_uni_characteristic(service->service_handle, desc, sizeof(desc), READ_PROP, &ble_uuid, &service->first_characteristic, values[0].value, values[0].size);
+    // error_code = estc_ble_add_uni_characteristic(service->service_handle, desc, sizeof(desc), READ_PROP, &ble_uuid, &service->first_characteristic, values[0].value, values[0].size);
+    // APP_ERROR_CHECK(error_code);
+    error_code = estc_ble_add_uni_characteristic(service->service_handle, desc2, sizeof(desc2),  READ_PROP | INDICATE_PROP, &ble_uuid2, &service->indication_characteristic, values[0].value, values[0].size);
     APP_ERROR_CHECK(error_code);
-    error_code = estc_ble_add_uni_characteristic(service->service_handle, desc2, sizeof(desc2),  READ_PROP | INDICATE_PROP, &ble_uuid2, &service->indication_characteristic, values[1].value, values[1].size);
-    APP_ERROR_CHECK(error_code);
-    return estc_ble_add_uni_characteristic(service->service_handle, desc3, sizeof(desc3), WRITE_PROP | READ_PROP | NOTIFY_PROP, &ble_uuid3, &service->notification_characteristic, values[2].value, values[2].size);
+    return estc_ble_add_uni_characteristic(service->service_handle, desc3, sizeof(desc3), WRITE_PROP | READ_PROP | NOTIFY_PROP, &ble_uuid3, &service->notification_characteristic, values[1].value, values[1].size);
 }
 
 static ret_code_t estc_ble_add_uni_characteristic(uint16_t service_handle, 

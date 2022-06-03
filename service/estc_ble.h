@@ -7,18 +7,18 @@
 #define DEVICE_NAME                     "Semyon"
 #define MANUFACTURER_NAME               "Nordic" 
 
-typedef void (*connect_calback)();
+typedef void (*connect_state_calback)();
 typedef void (*recieve_calback)(uint8_t *data, uint16_t len);
 
 typedef struct 
 {
-    connect_calback start_callback;
-    connect_calback stop_callback;
+    connect_state_calback start_connect_callback;
+    connect_state_calback stop_connect_callback;
     recieve_calback recieve_notify;
     recieve_calback recieve_inditify;
     value_char indication_value;
     value_char notification_value;
-    value_char defult_value;
+    bool is_notify_open;
 }ble_context;
 
 void ble_init(ble_context *context);

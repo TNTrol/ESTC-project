@@ -71,7 +71,7 @@ typedef struct
 }value_char;
 
 
-ret_code_t estc_ble_service_init(ble_estc_service_t *service, value_char values[3]);
+ret_code_t estc_ble_service_init(ble_estc_service_t *service, value_char values[2]);
 
 void estc_ble_service_on_ble_event(const ble_evt_t *ble_evt, void *ctx);
 

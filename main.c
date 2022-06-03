@@ -1,66 +1,78 @@
-    /**
-     * Copyright (c) 2014 - 2021, Nordic Semiconductor ASA
-     *
-     * All rights reserved.
-     *
-     * Redistribution and use in source and binary forms, with or without modification,
-     * are permitted provided that the following conditions are met:
-     *
-     * 1. Redistributions of source code must retain the above copyright notice, this
-     *    list of conditions and the following disclaimer.
-     *
-     * 2. Redistributions in binary form, except as embedded into a Nordic
-     *    Semiconductor ASA integrated circuit in a product or a software update for
-     *    such product, must reproduce the above copyright notice, this list of
-     *    conditions and the following disclaimer in the documentation and/or other
-     *    materials provided with the distribution.
-     *
-     * 3. Neither the name of Nordic Semiconductor ASA nor the names of its
-     *    contributors may be used to endorse or promote products derived from this
-     *    software without specific prior written permission.
-     *
-     * 4. This software, with or without modification, must only be used with a
-     *    Nordic Semiconductor ASA integrated circuit.
-     *
-     * 5. Any software provided in binary form under this license must not be reverse
-     *    engineered, decompiled, modified and/or disassembled.
-     *
-     * THIS SOFTWARE IS PROVIDED BY NORDIC SEMICONDUCTOR ASA "AS IS" AND ANY EXPRESS
-     * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-     * OF MERCHANTABILITY, NONINFRINGEMENT, AND FITNESS FOR A PARTICULAR PURPOSE ARE
-     * DISCLAIMED. IN NO EVENT SHALL NORDIC SEMICONDUCTOR ASA OR CONTRIBUTORS BE
-     * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-     * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-     * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-     * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-     * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
-     * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-     *
-     */
-    /** @file
-     *
-     * @defgroup estc_gatt main.c
-     * @{
-     * @ingroup estc_templates
-     * @brief ESTC-GATT project file.
-     *
-     * This file contains a template for creating a new BLE application with GATT services. It has
-     * the code necessary to advertise, get a connection, restart advertising on disconnect.
-     */
-
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+
+#if ESTC_USB_CLI_ENABLED
+#include "usb_module/usb_module.h"
+#include "command_module/command.h"
+#endif
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 #include "nrf_log_backend_usb.h"
 
-#include "timer/estc_timer.h"
 #include "service/estc_ble.h"
+#include "gpio_module/gpio_module.h"
+#include "pwm_module/pwm_module.h"
+#include "button_module/button_module.h"
+#include "util_module/utils.h"
+#include "color_module/color_module.h"
+#include "nrf_delay.h"
+#include "app_timer.h"
 
-static uint8_t color[3];
+#define UPDATE_TIMEOUT 400
+#define CONTROL_MASK 1
+#define RGB_MASK ((1 << 1) | (1 << 2) | (1 << 3))
+#define MAX_TIME_PWM_CICLE 20000
+#define MAX_VALUE_COUNTER (1024 * 8)
+#define MAX_VALUE_STEP_COUNTER (16)
+
+static uint16_t         m_pwm_step      = 200;
+static volatile uint8_t m_phase         = 0;
+static modificator_t    m_state         = MOD_NONE;
+static rgb_t            m_rgb_color     = {0, 0, 0};
+static hsv_t            m_hsv_color     = {0, 100, 100};
+static pwm_ctx_t        m_pwm           = GET_DEFAULT_CTX(0);
+static pwm_ctx_t        m_pwm_rgb       = GET_DEFAULT_CTX(1);
+APP_TIMER_DEF(m_update_timer_id);
+
+#if ESTC_USB_CLI_ENABLED
+static void handler_hsv_command(const char *line, uint8_t count_word);
+static void handler_rgb_command(const char *line, uint8_t count_word);
+static void handler_help_command(const char *line, uint8_t count_word);
+static void handler_save_command(const char *line, uint8_t count_word);
+
+static command_t        m_commands[]    = {
+        {.name = "HSV", .handler = handler_hsv_command},
+        {.name = "RGB", .handler = handler_rgb_command},
+        {.name = "help", .handler = handler_help_command},
+        {.name = "save", .handler = handler_save_command}
+};
+#endif
+
+void rgb_on()
+{
+    uint32_t step   = MAX_TIME_PWM_CICLE / 255;
+    uint32_t r      = m_rgb_color.r * step;
+    uint32_t g      = m_rgb_color.g * step;
+    uint32_t b      = m_rgb_color.b * step;
+    set_value_of_channel(&m_pwm_rgb, 1, r);
+    set_value_of_channel(&m_pwm_rgb, 2, g);
+    set_value_of_channel(&m_pwm_rgb, 3, b);
+}
+
+static void save()
+{
+    // write_data_in_flash(&m_hsv_color);
+    NRF_LOG_INFO("Save");
+}
+
+static void update_timer_handler(void *p)
+{
+    send_data_notification((uint8_t*) &m_rgb_color, 3);
+    send_data_indication((uint8_t*) &m_rgb_color, 3);
+}
 
 void log_init()
 {
@@ -73,74 +85,240 @@ void log_init()
 static void stop()
 {
     NRF_LOG_INFO("Disconnected");
-    timer_stop_indification();
-    timer_stop_notification();
+    app_timer_stop(m_update_timer_id);
 }
 
 static void start()
 {
     NRF_LOG_INFO("Connected");
-    timer_start_notification();
-    timer_start_indification();
+    app_timer_start(m_update_timer_id, UPDATE_TIMEOUT, NULL);
 }
 
 static void recieve_notification(uint8_t *data, uint16_t len)
 {
     NRF_LOG_INFO("Recieve: %d\n", len);
-    for(uint8_t i = 0; i < len; ++i)
+    m_rgb_color.r = data[0];
+    m_rgb_color.g = data[1];
+    m_rgb_color.b = data[2];
+    rgb_on();
+    rgb_to_hsv(&m_rgb_color, &m_hsv_color);
+    save();
+}
+
+void init_log(void)
+{
+    APP_ERROR_CHECK(NRF_LOG_INIT(NULL));
+    NRF_LOG_INFO("Starting up the test project with USB logging");
+    NRF_LOG_DEFAULT_BACKENDS_INIT();
+}
+
+void double_button_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
+{
+    m_state = MOD_INCREMENT(m_state);
+    m_phase = 0;
+    switch (m_state)
     {
-        NRF_LOG_INFO("data%d: %d\n", i, data[i]);
+    case MOD_V:
+    {
+        m_pwm_step = 0;
+        set_value_of_channel(&m_pwm, m_phase, MAX_TIME_PWM_CICLE);
+        break;
+    }
+    case MOD_S:
+    {
+        m_pwm_step = MAX_TIME_PWM_CICLE / 4;
+        break;
+    }
+    case MOD_H:
+    {
+        m_pwm_step = 300;
+        break;
+    }
+    default:
+        set_value_of_channel(&m_pwm, m_phase, 0);
+        save();
+        break;
     }
 }
 
-static void recieve_indification(uint8_t *data, uint16_t len)
+static void pwn_control_led_handler(nrfx_pwm_evt_type_t event_type)
 {
-    NRF_LOG_INFO("Recieve: %d\n", len);
-    for(uint8_t i = 0; i < len; ++i)
+    if (m_state == MOD_NONE)
     {
-        NRF_LOG_INFO("data%d: %d\n", i, data[i]);
+        return;
+    }
+    if (event_type == NRFX_PWM_EVT_FINISHED)
+    {
+        uint8_t channel = m_phase >> 1;
+        bool down = m_phase & 1;
+        bool next_phase = false;
+        uint16_t value = get_value_of_channel(&m_pwm, channel);
+        if (down)
+        {
+            value -= m_pwm_step;
+            next_phase = value == 0;
+        }
+        else
+        {
+            value += m_pwm_step;
+            next_phase = value >= MAX_TIME_PWM_CICLE;
+        }
+        set_value_of_channel(&m_pwm, channel, value);
+        if (next_phase)
+        {
+            m_phase = down ? m_phase - 1 : m_phase + 1;
+        }
     }
 }
 
-static uint32_t notification_value = 0xFAA;
-static uint32_t indication_value = 0xFFAAA;
-
-static void notifying_char_timeout_handler(void *p_context)
+#if ESTC_USB_CLI_ENABLED
+static bool parse_chars_to_numbers(const char *line, const uint8_t size, uint8_t *args)
 {
-    
-    notification_value += notification_value * 7 % 0xFFFF;
-    send_data_notification((uint8_t*)&notification_value, 3);
+    const char *start = line;
+    char *end = NULL;
+    long number = 0;
+    for(uint8_t i = 0; i < size; ++i)
+    {
+        number = strtol(start, &end, 10);
+        if(end == start || *end != '\0' || number < 0 || number > UINT8_MAX)
+        {
+            return false;
+        }
+        start = end + 1;
+        args[i] = number;
+    }
+   
+    return true;
 }
 
-static void indicating_char_timeout_handler(void *p_context)
-{   
-    indication_value = indication_value * 7 % 0xFFFFF;
-    send_data_indication((uint8_t*)&indication_value, 3);
+static void func_convert_to_color(bool is_rgb, const char *line, uint8_t count_word)
+{
+    if(count_word != 3)
+    {
+        usb_write_msg("\r\nUnexpected count arguments\n\r");
+        return;
+    }
+    color_t color;
+    if(!parse_chars_to_numbers(line, 3, color.components))
+    {
+        usb_write_msg("\r\nIncorect argument\n\r");
+        return;
+    }
+    rgb_t rgb;
+    hsv_t hsv;
+    if(is_rgb)
+    {
+        rgb = color.rgb;
+        rgb_to_hsv(&rgb, &hsv);       
+    }
+    else
+    {
+        hsv = color.hsv;
+        hsv_to_rgb(&hsv, &rgb);
+    }
+    m_hsv_color = hsv;
+    m_rgb_color = rgb;
+    rgb_on();
 }
 
+static void handler_rgb_command(const char *line, uint8_t count_word)
+{
+    func_convert_to_color(true, line, count_word);
+}
+
+static void handler_hsv_command(const char *line, uint8_t count_word)
+{
+    func_convert_to_color(false, line, count_word);
+}
+
+static void handler_help_command(const char *line, uint8_t count_word)
+{
+    if(count_word == 0)
+    {
+        usb_write_msg("\r\nCommands: RGB, HSV, help, save\n\r");
+    }
+    else
+    {
+        usb_write_msg("\r\nUnexpected count arguments\n\r");
+    }
+}
+
+static void handler_save_command(const char *line, uint8_t count_word)
+{
+    if(count_word == 0)
+    {
+        save();
+    }
+    else
+    {
+        usb_write_msg("\r\nUnexpected count arguments\n\r");
+    }
+}
+
+static void handler_usb_read(const char *msg, const uint8_t size)
+{
+    push_char_to_command(msg[0]);
+}
+
+static void handler_unknown_command(const char *line, uint8_t count_word)
+{
+    usb_write_msg("\r\nNot found command\n\r");
+}
+#endif
 
 int main(void)
 {
-    // Initialize.
-    log_init();
-    timer_init(notifying_char_timeout_handler, indicating_char_timeout_handler);
-    ble_context context = {.recieve_notify = recieve_notification, 
-                            .start_callback = start, 
-                            .stop_callback = stop,
-                            .recieve_inditify =recieve_indification,
-                            .notification_value = {.value =color, .size = 3},
-                            .indication_value = {.value = color, .size=3},
-                            .defult_value = {.value = NULL, .size = 0}};
-    ble_init(&context);
+    uint16_t h = 0, s = 0, v = 0;
 
-    // Enter main loop.
-    for (;;)
+    app_timer_create(&m_update_timer_id , APP_TIMER_MODE_REPEATED, update_timer_handler);
+    init_log();
+    ble_context context = {.recieve_notify = recieve_notification, 
+                            .start_connect_callback = start, 
+                            .stop_connect_callback = stop,
+                            .recieve_inditify = NULL,
+                            .notification_value = {.value = (uint8_t*)&m_rgb_color, .size = 3},
+                            .indication_value = {.value = (uint8_t*)&m_rgb_color, .size=3}};
+    ble_init(&context);
+    init_leds();
+    init_button();
+    init_pwn_module_for_leds(&m_pwm, pwn_control_led_handler, MAX_TIME_PWM_CICLE, CONTROL_MASK);
+    init_pwn_module_for_leds(&m_pwm_rgb, NULL, MAX_TIME_PWM_CICLE, RGB_MASK);
+    init_gpiote_button(double_button_handler);
+    #if ESTC_USB_CLI_ENABLED
+    init_usb_module(handler_usb_read);
+    init_parse(ARRAY_SIZE(m_commands), m_commands, handler_unknown_command);
+    #endif
+    // init_memory_module_32();
+    hsv_to_rgb(&m_hsv_color, &m_rgb_color);
+    rgb_on();
+
+    while (true)
     {
         idle_state_handle();
+        #if ESTC_USB_CLI_ENABLED
+        app_usbd_event_queue_process();
+        #endif
+        if(m_state != MOD_NONE && is_long_press())
+        {
+            NRF_LOG_INFO("State %d Color r=%d, g=%d, b=%d", m_state, m_rgb_color.r, m_rgb_color.g, m_rgb_color.b);
+            switch (m_state)
+            {
+            case MOD_H:
+                h = circle_increment(h, MAX_VALUE_COUNTER);
+                m_hsv_color.h = h / MAX_VALUE_STEP_COUNTER;
+                break;
+            case MOD_S:
+                s = circle_increment(s, MAX_VALUE_COUNTER);
+                m_hsv_color.s = s / MAX_VALUE_STEP_COUNTER;
+                break;
+            default:
+                v = circle_increment(v, MAX_VALUE_COUNTER);
+                m_hsv_color.v = v / MAX_VALUE_STEP_COUNTER;
+                break;
+            }
+            hsv_to_rgb(&m_hsv_color, &m_rgb_color);
+            rgb_on();
+            nrf_delay_ms(1);
+        }
     }
 }
-
-
-    /**
-     * @}
-     */

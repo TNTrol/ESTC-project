@@ -9,11 +9,13 @@
 
 #define DEVICE_BUTTON_DELAY_MIN 1000
 #define DEVICE_BUTTON_DELAY_MAX 7500
-#define GET_DEFAULT_BUTTON_CTX(id)      \
+#define GET_DEFAULT_BUTTON_CTX          \
 {                                       \
     .is_first_click = false,            \
     .is_long_press = false,             \
     .is_button_press = false,           \
+    .is_button_range = false,           \
+    .is_most_long = false,              \
     .prev_button_time = 0,              \
     .double_button_evt_handler = NULL   \
 }
@@ -25,6 +27,8 @@ typedef struct
     bool is_first_click;
     bool is_long_press;
     bool is_button_press;
+    bool is_button_range;
+    bool is_most_long;
 }button_module_ctx_t;
 
 

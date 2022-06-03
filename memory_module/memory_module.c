@@ -8,16 +8,16 @@
 
 
 static uint32_t m_address = 0;
-static uint8_t buffer[4];
+static uint8_t  buffer[4];
 
 static void fstorage_evt_handler(nrf_fstorage_evt_t * p_evt);
+
 NRF_FSTORAGE_DEF(nrf_fstorage_t fstorage) =
 {
     .evt_handler = fstorage_evt_handler,
     .start_addr = START_FIRST_PAGE_FLASH,
     .end_addr   = END_PAGE_FLASH
 };
-
 
 static void fstorage_evt_handler(nrf_fstorage_evt_t * p_evt)
 {
@@ -45,7 +45,6 @@ static void fstorage_evt_handler(nrf_fstorage_evt_t * p_evt)
             break;
     }
 }
-
 
 uint32_t find_end(uint32_t address)
 {
@@ -81,7 +80,6 @@ uint32_t find_end(uint32_t address)
     return address;
 }
 
-
 void init_memory_module_32(hsv_t *color)
 {
     nrf_fstorage_init(&fstorage, &nrf_fstorage_sd, NULL);
@@ -91,7 +89,6 @@ void init_memory_module_32(hsv_t *color)
     color->s = arr[1];
     color->v = arr[2];
 }
-
 
 bool read_data_in_flash(hsv_t* out_data)
 {
@@ -105,7 +102,6 @@ bool read_data_in_flash(hsv_t* out_data)
     out_data->v = color[2];
     return true;
 }
-
 
 void write_data_in_flash(const hsv_t* in_data)
 {
@@ -124,7 +120,6 @@ void write_data_in_flash(const hsv_t* in_data)
                      sizeof(buffer), NULL);
     m_address += SIZE_STEP_FLASH;
 }
-
 
 void wait_for_flash_ready(nrf_fstorage_t const * p_fstorage)
 {

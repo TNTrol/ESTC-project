@@ -281,15 +281,10 @@ static void recieve_data(ble_evt_t const * p_ble_evt)
     ble_gatts_evt_write_t const * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
     if (p_evt_write->handle == m_estc_service.notification_characteristic.value_handle && m_ble_context.recieve_notify)
     {
-        if (ble_srv_is_notification_enabled(p_evt_write->data))
-        {
-            m_ble_context.is_notify_open = true;
+        // if (ble_srv_is_notification_enabled(p_evt_write->data))
+        // {
             m_ble_context.recieve_notify((uint8_t*)&p_evt_write->data, p_evt_write->len);
-        }
-        else
-        {
-            m_ble_context.is_notify_open = false;
-        }
+        // }
         return;
     }
     if (p_evt_write->handle == m_estc_service.indication_characteristic.value_handle && m_ble_context.recieve_inditify)
@@ -471,10 +466,6 @@ static void advertising_start(void)
 
 void send_data_notification(uint8_t *data, uint16_t len)
 {
-    if(!m_ble_context.is_notify_open)
-    {
-        return;
-    }
     estc_update_characteristic_value(m_estc_service.connection_handle, 
                                     m_estc_service.notification_characteristic.value_handle,
                                     BLE_GATT_HVX_NOTIFICATION,

@@ -21,6 +21,8 @@
 #include "nrf_delay.h"
 #include "app_timer.h"
 
+#include "memory_module/memory_module.h"
+
 #define UPDATE_TIMEOUT 400
 #define CONTROL_MASK 1
 #define RGB_MASK ((1 << 1) | (1 << 2) | (1 << 3))
@@ -35,6 +37,7 @@ static rgb_t            m_rgb_color     = {0, 0, 0};
 static hsv_t            m_hsv_color     = {0, 100, 100};
 static pwm_ctx_t        m_pwm           = GET_DEFAULT_CTX(0);
 static pwm_ctx_t        m_pwm_rgb       = GET_DEFAULT_CTX(1);
+static bool             m_save          = false;
 APP_TIMER_DEF(m_update_timer_id);
 
 #if ESTC_USB_CLI_ENABLED
@@ -64,8 +67,8 @@ void rgb_on()
 
 static void save()
 {
-    // write_data_in_flash(&m_hsv_color);
-    NRF_LOG_INFO("Save");
+    write_data_in_flash(&m_hsv_color);
+    // NRF_LOG_INFO("Save");
 }
 
 static void update_timer_handler(void *p)
@@ -96,12 +99,16 @@ static void start()
 
 static void recieve_notification(uint8_t *data, uint16_t len)
 {
-    NRF_LOG_INFO("Recieve: %d\n", len);
+    hsv_t color = {0};
+    read_data_in_flash(&color);
+    NRF_LOG_INFO("Old hsv %d %d %d", color.h, color.s, color.v);
+    NRF_LOG_INFO("Recieve: %d", len);
     m_rgb_color.r = data[0];
     m_rgb_color.g = data[1];
     m_rgb_color.b = data[2];
-    rgb_on();
     rgb_to_hsv(&m_rgb_color, &m_hsv_color);
+    NRF_LOG_INFO("New hsv %d %d %d", m_hsv_color.h, m_hsv_color.s, m_hsv_color.v);
+    rgb_on();
     save();
 }
 
@@ -136,7 +143,8 @@ void double_button_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action)
     }
     default:
         set_value_of_channel(&m_pwm, m_phase, 0);
-        save();
+        // save();
+        m_save = true;
         break;
     }
 }
@@ -270,6 +278,12 @@ int main(void)
 {
     uint16_t h = 0, s = 0, v = 0;
 
+    
+    // if (!read_data_in_flash( &m_hsv_color))
+    // {
+    //     //write_data_in_flash(&m_hsv_color);
+    // }
+
     app_timer_create(&m_update_timer_id , APP_TIMER_MODE_REPEATED, update_timer_handler);
     init_log();
     ble_context context = {.recieve_notify = recieve_notification, 
@@ -288,7 +302,9 @@ int main(void)
     init_usb_module(handler_usb_read);
     init_parse(ARRAY_SIZE(m_commands), m_commands, handler_unknown_command);
     #endif
-    // init_memory_module_32();
+    init_memory_module_32(&m_hsv_color);
+    read_data_in_flash( &m_hsv_color);
+    
     hsv_to_rgb(&m_hsv_color, &m_rgb_color);
     rgb_on();
 
@@ -298,6 +314,11 @@ int main(void)
         #if ESTC_USB_CLI_ENABLED
         app_usbd_event_queue_process();
         #endif
+        if (m_save)
+        {
+            m_save = false;
+            save();
+        }
         if(m_state != MOD_NONE && is_long_press())
         {
             NRF_LOG_INFO("State %d Color r=%d, g=%d, b=%d", m_state, m_rgb_color.r, m_rgb_color.g, m_rgb_color.b);
